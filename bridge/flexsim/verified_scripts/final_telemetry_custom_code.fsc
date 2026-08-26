@@ -1,0 +1,157 @@
+// FINAL, verified FlexScript for the Process Flow "Custom Code" block that
+// runs on a loop (Source -> Custom Code -> Delay(5s) -> back to Custom
+// Code) while DG-FT-01.fsm is running. POSTs real model state to the
+// bridge every 5 simulated seconds.
+//
+// Requires these Model Parameters (Model Parameter Tables > Parameters)
+// to already exist, type Continuous, Lower Bound a large negative number,
+// Upper Bound a large positive number, Value starting at 0 — Integer type
+// with default bounds silently rounds/clamps and breaks this:
+//   Proc1Busy .. Proc7Busy, LastSampleTime
+//   TE3PrevX, TE3PrevY, TE3PrevSampleTime
+//   TE4PrevX, TE4PrevY, TE4PrevSampleTime
+//   RampEast, RampWest, Merger, PreSort1..PreSort6, Oddevenmerger, Odd,
+//   Even, Out1, Out2, Out3  (Integer is fine for these — they're plain
+//   incrementing counts, driven by Photo Eye "On Cover" triggers, see
+//   README.md in this folder)
+//
+// Key gotcha this file encodes: Queue1-Queue4 (and TaskExecuter3/4) live
+// nested under a "Plane1" group in the model tree, NOT at the model root.
+// Model.find("Queue1") silently finds a different, empty node — it does
+// NOT error, so this is easy to miss. The fix is Model.find("Plane1/Queue1").
+// Find any object's real path by clicking it once and reading the bottom
+// status bar: "Object: /Plane1/Queue1 Position [...]".
+
+Http.Request req;
+req.host = "127.0.0.1";
+req.port = 8000;
+req.path = "/api/v1/telemetry";
+req.method = Http.Method.Post;
+req.headers = "Content-Type: application/json\r\n";
+
+string json = "{";
+json = json + "\"simulation_time\": " + Model.time + ",";
+json = json + "\"model_status\": \"running\",";
+
+json = json + "\"queues\": {";
+json = json + "\"Queue1\": " + content(Model.find("Plane1/Queue1")) + ",";
+json = json + "\"Queue2\": " + content(Model.find("Plane1/Queue2")) + ",";
+json = json + "\"Queue3\": " + content(Model.find("Plane1/Queue3")) + ",";
+json = json + "\"Queue4\": " + content(Model.find("Plane1/Queue4")) + ",";
+json = json + "\"Queue6\": " + content(Model.find("Queue6")) + ",";
+json = json + "\"Queue7\": " + content(Model.find("Queue7")) + ",";
+json = json + "\"Queue12\": " + content(Model.find("Queue12")) + ",";
+json = json + "\"Queue13\": " + content(Model.find("Queue13")) + ",";
+json = json + "\"Queue14\": " + content(Model.find("Queue14")) + ",";
+json = json + "\"Queue15\": " + content(Model.find("Queue15"));
+json = json + "},";
+
+// Processor state/utilization: utilization is computed ourselves by
+// accumulating busy-time each cycle and dividing by elapsed model time —
+// FlexSim's built-in stats API (stats.state(), getstatetableutilization())
+// exists but wasn't verified against this model, so this simpler,
+// self-contained approach was used instead.
+double dt = Model.time - Model.parameters.LastSampleTime;
+if (dt < 0) { dt = 0; }
+
+string state1 = "idle";
+if (content(Model.find("Processor1")) > 0) { state1 = "processing"; Model.parameters.Proc1Busy = Model.parameters.Proc1Busy + dt; }
+string state2 = "idle";
+if (content(Model.find("Processor2")) > 0) { state2 = "processing"; Model.parameters.Proc2Busy = Model.parameters.Proc2Busy + dt; }
+string state3 = "idle";
+if (content(Model.find("Processor3")) > 0) { state3 = "processing"; Model.parameters.Proc3Busy = Model.parameters.Proc3Busy + dt; }
+string state4 = "idle";
+if (content(Model.find("Processor4")) > 0) { state4 = "processing"; Model.parameters.Proc4Busy = Model.parameters.Proc4Busy + dt; }
+string state5 = "idle";
+if (content(Model.find("Processor5")) > 0) { state5 = "processing"; Model.parameters.Proc5Busy = Model.parameters.Proc5Busy + dt; }
+string state6 = "idle";
+if (content(Model.find("Processor6")) > 0) { state6 = "processing"; Model.parameters.Proc6Busy = Model.parameters.Proc6Busy + dt; }
+string state7 = "idle";
+if (content(Model.find("Processor7")) > 0) { state7 = "processing"; Model.parameters.Proc7Busy = Model.parameters.Proc7Busy + dt; }
+
+Model.parameters.LastSampleTime = Model.time;
+
+double util1 = 0.0; if (Model.time > 0) { util1 = Model.parameters.Proc1Busy / Model.time; }
+double util2 = 0.0; if (Model.time > 0) { util2 = Model.parameters.Proc2Busy / Model.time; }
+double util3 = 0.0; if (Model.time > 0) { util3 = Model.parameters.Proc3Busy / Model.time; }
+double util4 = 0.0; if (Model.time > 0) { util4 = Model.parameters.Proc4Busy / Model.time; }
+double util5 = 0.0; if (Model.time > 0) { util5 = Model.parameters.Proc5Busy / Model.time; }
+double util6 = 0.0; if (Model.time > 0) { util6 = Model.parameters.Proc6Busy / Model.time; }
+double util7 = 0.0; if (Model.time > 0) { util7 = Model.parameters.Proc7Busy / Model.time; }
+
+json = json + "\"processors\": {";
+json = json + "\"Processor1\": {\"state\": \"" + state1 + "\", \"utilization\": " + util1 + "},";
+json = json + "\"Processor2\": {\"state\": \"" + state2 + "\", \"utilization\": " + util2 + "},";
+json = json + "\"Processor3\": {\"state\": \"" + state3 + "\", \"utilization\": " + util3 + "},";
+json = json + "\"Processor4\": {\"state\": \"" + state4 + "\", \"utilization\": " + util4 + "},";
+json = json + "\"Processor5\": {\"state\": \"" + state5 + "\", \"utilization\": " + util5 + "},";
+json = json + "\"Processor6\": {\"state\": \"" + state6 + "\", \"utilization\": " + util6 + "},";
+json = json + "\"Processor7\": {\"state\": \"" + state7 + "\", \"utilization\": " + util7 + "}";
+json = json + "},";
+
+// Robots: speed is computed from displacement between samples (no
+// built-in "current speed" property was found on TaskExecuter), state is
+// derived from that computed speed.
+TaskExecuter te4 = Model.find("Plane1/TaskExecuter4");
+double curX4 = te4.location.x;
+double curY4 = te4.location.y;
+double dtTE4 = Model.time - Model.parameters.TE4PrevSampleTime;
+double dx4 = curX4 - Model.parameters.TE4PrevX;
+double dy4 = curY4 - Model.parameters.TE4PrevY;
+double dist4 = sqrt(dx4*dx4 + dy4*dy4);
+double speedTE4 = 0.0;
+if (dtTE4 > 0) { speedTE4 = dist4 / dtTE4; }
+string stateTE4 = "idle";
+if (speedTE4 > 0.01) { stateTE4 = "moving"; }
+Model.parameters.TE4PrevX = curX4;
+Model.parameters.TE4PrevY = curY4;
+Model.parameters.TE4PrevSampleTime = Model.time;
+
+TaskExecuter te3 = Model.find("Plane1/TaskExecuter3");
+double curX3 = te3.location.x;
+double curY3 = te3.location.y;
+double dtTE3 = Model.time - Model.parameters.TE3PrevSampleTime;
+double dx3 = curX3 - Model.parameters.TE3PrevX;
+double dy3 = curY3 - Model.parameters.TE3PrevY;
+double dist3 = sqrt(dx3*dx3 + dy3*dy3);
+double speedTE3 = 0.0;
+if (dtTE3 > 0) { speedTE3 = dist3 / dtTE3; }
+string stateTE3 = "idle";
+if (speedTE3 > 0.01) { stateTE3 = "moving"; }
+Model.parameters.TE3PrevX = curX3;
+Model.parameters.TE3PrevY = curY3;
+Model.parameters.TE3PrevSampleTime = Model.time;
+
+json = json + "\"robots\": {";
+json = json + "\"TaskExecuter3\": {\"x\": " + curX3 + ", \"y\": " + curY3 + ", \"speed\": " + speedTE3 + ", \"state\": \"" + stateTE3 + "\", \"battery\": 100},";
+json = json + "\"TaskExecuter4\": {\"x\": " + curX4 + ", \"y\": " + curY4 + ", \"speed\": " + speedTE4 + ", \"state\": \"" + stateTE4 + "\", \"battery\": 100}";
+json = json + "},";
+
+// Throughput counters: incremented independently by each Photo Eye's
+// "On Cover" trigger (Model.parameters.<Name> = Model.parameters.<Name> + 1),
+// read here and sent through. sources = entry/sorting points, sinks =
+// final exit lanes — grouping is arbitrary and just mirrors the
+// telemetry schema's existing free-form sources/sinks fields.
+json = json + "\"sources\": {";
+json = json + "\"RampEast\": {\"count\": " + Model.parameters.RampEast + "},";
+json = json + "\"RampWest\": {\"count\": " + Model.parameters.RampWest + "},";
+json = json + "\"Merger\": {\"count\": " + Model.parameters.Merger + "},";
+json = json + "\"PreSort1\": {\"count\": " + Model.parameters.PreSort1 + "},";
+json = json + "\"PreSort2\": {\"count\": " + Model.parameters.PreSort2 + "},";
+json = json + "\"PreSort3\": {\"count\": " + Model.parameters.PreSort3 + "},";
+json = json + "\"PreSort4\": {\"count\": " + Model.parameters.PreSort4 + "},";
+json = json + "\"PreSort5\": {\"count\": " + Model.parameters.PreSort5 + "},";
+json = json + "\"PreSort6\": {\"count\": " + Model.parameters.PreSort6 + "},";
+json = json + "\"Oddevenmerger\": {\"count\": " + Model.parameters.Oddevenmerger + "},";
+json = json + "\"Odd\": {\"count\": " + Model.parameters.Odd + "},";
+json = json + "\"Even\": {\"count\": " + Model.parameters.Even + "}";
+json = json + "},";
+json = json + "\"sinks\": {";
+json = json + "\"Out1\": {\"count\": " + Model.parameters.Out1 + "},";
+json = json + "\"Out2\": {\"count\": " + Model.parameters.Out2 + "},";
+json = json + "\"Out3\": {\"count\": " + Model.parameters.Out3 + "}";
+json = json + "}";
+json = json + "}";
+
+req.data = json;
+Http.Response resp = req.sendAndWait();
