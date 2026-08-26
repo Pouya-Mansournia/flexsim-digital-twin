@@ -1,0 +1,14 @@
+// Verified working FlexScript — POST telemetry to the bridge.
+// Run inside FlexSim 2027's Script Console (toolbar button "Script").
+// Confirmed working on 2026-08-25: returned statusCode 200 and the
+// bridge logged "Telemetry received: sim_time=1.00 status=running ...".
+
+Http.Request req;
+req.host = "127.0.0.1";
+req.port = 8000;
+req.path = "/api/v1/telemetry";
+req.method = Http.Method.Post;
+req.headers = "Content-Type: application/json\r\n";
+req.data = "{\"simulation_time\": 1.0, \"model_status\": \"running\", \"queues\": {}, \"processors\": {}, \"robots\": {}}";
+Http.Response resp = req.sendAndWait();
+resp.statusCode;

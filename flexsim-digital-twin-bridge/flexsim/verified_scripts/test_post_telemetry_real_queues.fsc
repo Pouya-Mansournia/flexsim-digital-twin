@@ -1,0 +1,29 @@
+// Verified working FlexScript — POST real queue content from DG-FT-01.fsm.
+// Run inside FlexSim 2027's Script Console.
+// Confirmed working on 2026-08-25: statusCode 200, bridge logged real
+// queue counts, e.g. "queues=4" with actual content() values (0 while
+// model was stopped at time 0 — run the model first to see nonzero counts).
+
+Http.Request req;
+req.host = "127.0.0.1";
+req.port = 8000;
+req.path = "/api/v1/telemetry";
+req.method = Http.Method.Post;
+req.headers = "Content-Type: application/json\r\n";
+
+string json = "{";
+json = json + "\"simulation_time\": " + Model.time + ",";
+json = json + "\"model_status\": \"running\",";
+json = json + "\"queues\": {";
+json = json + "\"Queue1\": " + content(Model.find("Queue1")) + ",";
+json = json + "\"Queue6\": " + content(Model.find("Queue6")) + ",";
+json = json + "\"Queue7\": " + content(Model.find("Queue7")) + ",";
+json = json + "\"Queue12\": " + content(Model.find("Queue12"));
+json = json + "},";
+json = json + "\"processors\": {},";
+json = json + "\"robots\": {}";
+json = json + "}";
+
+req.data = json;
+Http.Response resp = req.sendAndWait();
+resp.statusCode;

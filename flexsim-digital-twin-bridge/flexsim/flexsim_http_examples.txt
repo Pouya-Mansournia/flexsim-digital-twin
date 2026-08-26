@@ -1,0 +1,86 @@
+FlexSim HTTP interaction examples (PSEUDO-CODE)
+=================================================
+
+These snippets are illustrative pseudo-code only. Exact FlexSim 2027
+FlexScript syntax for HTTP requests should be confirmed against the FlexSim
+2027 reference manual before use; nothing here should be treated as a
+verified/tested FlexScript API call.
+
+--------------------------------------------------------------------------
+1. Serialize model state to JSON (pseudo-code)
+--------------------------------------------------------------------------
+
+    // PSEUDOCODE - verify actual JSON-building approach in FlexSim 2027
+    Variant json = createJSONObject();
+    setJSONField(json, "simulation_time", getSimTime());
+    setJSONField(json, "model_status", "running");
+
+    Variant queues = createJSONObject();
+    setJSONField(queues, "Queue1", content(Queue1));
+    setJSONField(json, "queues", queues);
+
+    Variant robots = createJSONObject();
+    Variant agv1 = createJSONObject();
+    setJSONField(agv1, "x", getX(AGV1));
+    setJSONField(agv1, "y", getY(AGV1));
+    setJSONField(agv1, "speed", getSpeed(AGV1));
+    setJSONField(agv1, "state", "moving");
+    setJSONField(agv1, "battery", getBatteryLevel(AGV1));
+    setJSONField(robots, "AGV1", agv1);
+    setJSONField(json, "robots", robots);
+
+--------------------------------------------------------------------------
+2. POST telemetry to the bridge (pseudo-code)
+--------------------------------------------------------------------------
+
+    // PSEUDOCODE - verify actual HTTP request API in FlexSim 2027
+    // (FlexSim exposes HTTP request functionality conceptually; the exact
+    // function names below are placeholders.)
+    httpPost(
+        "http://127.0.0.1:8000/api/v1/telemetry",
+        jsonToString(json),
+        "application/json"
+    );
+
+--------------------------------------------------------------------------
+3. Poll for the next pending command (pseudo-code)
+--------------------------------------------------------------------------
+
+    // PSEUDOCODE
+    String response = httpGet("http://127.0.0.1:8000/api/v1/commands/next");
+    Variant parsed = parseJSON(response);
+
+    if (getJSONField(parsed, "command") != null) {
+        String commandId = getJSONField(parsed.command, "command_id");
+        String target = getJSONField(parsed.command, "target");
+        String commandName = getJSONField(parsed.command, "command");
+        // dispatch to the appropriate FlexSim object based on target/commandName
+    }
+
+--------------------------------------------------------------------------
+4. Acknowledge a command after execution (pseudo-code)
+--------------------------------------------------------------------------
+
+    // PSEUDOCODE
+    Variant ack = createJSONObject();
+    setJSONField(ack, "status", "executed");
+    setJSONField(ack, "message", "Command applied successfully");
+
+    httpPost(
+        "http://127.0.0.1:8000/api/v1/commands/" + commandId + "/ack",
+        jsonToString(ack),
+        "application/json"
+    );
+
+--------------------------------------------------------------------------
+Notes
+--------------------------------------------------------------------------
+
+- All function names above (createJSONObject, setJSONField, httpPost,
+  httpGet, parseJSON, jsonToString) are placeholders standing in for
+  whatever FlexSim 2027 actually provides for JSON handling and HTTP
+  requests. Consult the FlexSim 2027 documentation for the real API.
+- A practical starting point is to trigger telemetry POSTs on a periodic
+  Timer/Event trigger, and command polling on a separate periodic trigger.
+- Keep payloads small; avoid sending full object graphs on every tick if
+  only a subset of state changed.
