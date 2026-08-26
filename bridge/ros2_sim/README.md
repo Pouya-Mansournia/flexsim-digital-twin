@@ -1,11 +1,11 @@
-# ros2_sim — mock "real environment" for digital-twin comparison
+# ros2_sim: mock "real environment" for digital-twin comparison
 
-This is **not ROS2** — no ROS2 packages are installed, consistent with
+This is **not ROS2**: no ROS2 packages are installed, consistent with
 Phase 1's scope (see the root README's "Phase 2: ROS2" section). It's a
 small standalone Python discrete-time simulation standing in for a real
 robot fleet, so we can demonstrate and test the actual point of a digital
 twin: comparing what the simulation (FlexSim) predicts against what "the
-real system" reports, side by side — and answering operational questions
+real system" reports, side by side, and answering operational questions
 ("how many robots before the queue backs up?") before touching real
 hardware or a real ROS2 stack.
 
@@ -20,13 +20,13 @@ hardware or a real ROS2 stack.
 - **A steady arrival rate** of new totes into `Queue1`/`Queue2`, so a
   backlog can actually form if the fleet can't keep up.
 - **Weighted, backlog-aware dispatch**: an idle robot doesn't always
-  chase whichever queue happens to be strictly larger — it picks
+  chase whichever queue happens to be strictly larger: it picks
   probabilistically, weighted by each queue's current size, so a 3x
   bigger backlog is 3x more likely to get serviced next without starving
   the smaller queue entirely.
 - **A live-configurable fleet size**: the number of robots isn't fixed at
   startup. Every tick, the simulator polls `GET /api/v1/real/config` and
-  adds or removes robots to match — so the dashboard's fleet-size input
+  adds or removes robots to match, so the dashboard's fleet-size input
   changes the simulation in real time, no restart needed.
 - **A computed `backlog` metric** (`Queue1 + Queue2`) with a printed
   growing/shrinking/stable trend each tick, so you can literally watch
@@ -47,11 +47,11 @@ POST http://127.0.0.1:8000/api/v1/real/telemetry
 ```
 
 This is a **separate channel** from FlexSim's own telemetry
-(`/api/v1/telemetry`) — the two are never merged. The dashboard's
+(`/api/v1/telemetry`): the two are never merged. The dashboard's
 "Digital Twin Comparison" panel reads both and draws them as grouped bars
 per queue name, plus separate robot tables, so you can see where the
 simulated and real sides agree or diverge. FlexSim's own model also has
-real `Queue1`–`Queue4` (nested under `Plane1` — see
+real `Queue1`–`Queue4` (nested under `Plane1`: see
 `../flexsim/verified_scripts/README.md`), so all four queues are
 genuinely comparable between the two sides, not just `Queue1`.
 
@@ -64,7 +64,7 @@ With the bridge already running (`.\run.ps1` from `bridge/`):
 ```
 
 Leave it running in its own terminal; it loops until Ctrl+C. `--robots`
-just sets the *starting* fleet size — change it live afterward from the
+just sets the *starting* fleet size: change it live afterward from the
 dashboard's "Real-environment fleet size" control instead of restarting.
 
 Watch `http://127.0.0.1:8000/dashboard` update live, or read the
@@ -80,7 +80,7 @@ With the default arrival rate (`ARRIVAL_RATE_PER_QUEUE` in
 `simulator.py`), one full pickup→dropoff robot cycle takes roughly 14s
 (travel + load + travel + unload). Two robots in parallel service about
 one tote every 7s (~0.14 totes/sec), while arrivals average ~0.24
-totes/sec across both queues — so with 2 robots, backlog grows slowly but
+totes/sec across both queues, so with 2 robots, backlog grows slowly but
 steadily. Try setting the fleet size to 1, then 3, then 5 from the
 dashboard and watch the **Trend** indicator and the backlog chart to find
 the number where growth stops.
@@ -98,8 +98,8 @@ Constants at the top of `simulator.py`:
 
 ## Replacing this with real ROS2 later (Phase 2)
 
-When Phase 2 starts, this script's role — periodically reporting
-real-world queue/robot state to `/api/v1/real/telemetry` — would be taken
+When Phase 2 starts, this script's role of periodically reporting
+real-world queue/robot state to `/api/v1/real/telemetry` would be taken
 over by an actual ROS2 node subscribing to real topics (`/warehouse/state`,
 `/amr/state`, etc., per the root README's Phase 2 section) instead of a
 simulation. The bridge-side API (`/api/v1/real/telemetry`,

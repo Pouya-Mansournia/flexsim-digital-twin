@@ -3,7 +3,7 @@
 The Python middleware at the center of this project: a FastAPI service
 that receives telemetry from FlexSim, exposes it over REST, serves a live
 comparison dashboard, and accepts commands FlexSim can poll and
-acknowledge — structured so a ROS2 layer can be added later without
+acknowledge, structured so a ROS2 layer can be added later without
 rewriting the API.
 
 ```text
@@ -11,7 +11,7 @@ FlexSim
     ↕ HTTP/JSON
 bridge (this project)
     ↕
-ROS2 — future phase
+ROS2 (future phase)
 ```
 
 See the [repository root README](../README.md) for the full project
@@ -24,12 +24,12 @@ and `ros2_sim/`.
   validated with Pydantic, held in thread-safe in-memory storage
   (`GET /api/v1/state`, `POST /api/v1/state/reset`).
 - Receives telemetry from a separate "real/ROS2-side" environment
-  (`POST /api/v1/real/telemetry`, `GET /api/v1/real/state`) — a distinct
+  (`POST /api/v1/real/telemetry`, `GET /api/v1/real/state`): a distinct
   channel from FlexSim's, so the two can be compared rather than merged.
 - Lets that real-environment fleet size be controlled live from the
   dashboard (`GET`/`POST /api/v1/real/config`) without restarting the
   simulator process.
-- Serves a live, auto-refreshing dashboard (`GET /dashboard`) — queue
+- Serves a live, auto-refreshing dashboard (`GET /dashboard`): queue
   levels, processor utilization, throughput counters, robot state, and a
   side-by-side FlexSim-vs-real comparison chart. Pure HTML/CSS/JS, no
   external dependencies, no build step.
@@ -44,7 +44,7 @@ and `ros2_sim/`.
 ```text
 app/
 ├── main.py              FastAPI app wiring, startup logging, error handling
-├── api/                  HTTP endpoints (thin — validation + delegation only)
+├── api/                  HTTP endpoints (thin: validation + delegation only)
 │   ├── health.py
 │   ├── telemetry.py       POST /telemetry, GET /state, POST /state/reset
 │   ├── commands.py
@@ -66,14 +66,14 @@ app/
 ```
 
 Every `services/*_store.py` is the only place that knows its data lives
-in memory — a later persistent-storage implementation (SQLite, etc.) can
+in memory. A later persistent-storage implementation (SQLite, etc.) can
 implement the same interface without touching `api/`.
 
 ## Installation & running
 
 Requires Python 3.11+ on Windows.
 
-**No command line needed:** double-click `start.bat` in this folder — it
+**No command line needed:** double-click `start.bat` in this folder. It
 sets up `.venv` on first run, starts the server, and opens the dashboard
 in your browser automatically.
 
@@ -125,10 +125,10 @@ http://127.0.0.1:8000/dashboard
   table of the real-side robots.
 - Light/dark theme toggle (persisted in the browser).
 - **Reset** clears both FlexSim's and the real environment's stored
-  telemetry — useful before a fresh run, though independent processes
-  (FlexSim, `ros2_sim/simulator.py`) keep running regardless; Reset only
-  clears what the bridge remembers, by design (see root README's digital
-  twin note on why that's correct behavior).
+  telemetry. Useful before a fresh run, though independent processes
+  (FlexSim, `ros2_sim/simulator.py`) keep running regardless: Reset only
+  clears what the bridge remembers, by design (see the root README's
+  digital twin note on why that's correct behavior).
 
 ## API reference
 
@@ -172,7 +172,7 @@ Invoke-RestMethod -Uri http://127.0.0.1:8000/api/v1/real/config -Method Post `
 ## FlexSim integration
 
 See [`flexsim/README.md`](flexsim/README.md) for the general integration
-guide, and — this is the one to actually follow —
+guide, and (this is the one to actually follow)
 [`flexsim/verified_scripts/README.md`](flexsim/verified_scripts/README.md)
 plus [`flexsim/verified_scripts/final_telemetry_custom_code.fsc`](flexsim/verified_scripts/final_telemetry_custom_code.fsc)
 for the exact, tested FlexScript running against `DG-FT-01.fsm` today,
@@ -183,7 +183,7 @@ quirks, Photo Eye trigger throughput counting).
 ## The real/ROS2-side environment
 
 See [`../ros2_sim/README.md`](../ros2_sim/README.md). Short version: it's
-not real ROS2 (no ROS2 dependencies installed — that's Phase 2), it's a
+not real ROS2 (no ROS2 dependencies installed, that's Phase 2). It's a
 small physics-based mock robot fleet with realistic speed ramping and a
 steady tote arrival rate, so the "how many robots before backlog stops
 growing" question has a real, testable answer today, and Phase 2 can drop
@@ -203,7 +203,7 @@ ROS2 Commands → bridge → FlexSim
 
 No ROS2 dependencies are installed. When Phase 2 begins, an `app/ros/`
 package would read/write the existing `state_store`/`command_store`/
-`real_environment_store` services without changing the HTTP API — and
+`real_environment_store` services without changing the HTTP API, and
 would take over from `ros2_sim/simulator.py` as the source of
 `/api/v1/real/telemetry` data.
 
@@ -211,9 +211,9 @@ would take over from `ros2_sim/simulator.py` as the source of
 
 - FlexSim 2027 provides HTTP request capability via the `Http.Request`/
   `Http.Response` FlexScript classes (confirmed live, not guessed).
-- Single FlexSim model instance, single bridge instance — no
+- Single FlexSim model instance, single bridge instance: no
   multi-tenant routing.
 - Localhost-only; no authentication/TLS.
 - Windows Firewall must allow FlexSim's outbound traffic to localhost
-  (see `flexsim/verified_scripts/README.md`) — a machine-specific setup
+  (see `flexsim/verified_scripts/README.md`), a machine-specific setup
   step, not something the bridge can work around on its own.
