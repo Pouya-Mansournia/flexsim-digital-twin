@@ -2,6 +2,14 @@
 
 # FlexSim Digital Twin
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Pydantic](https://img.shields.io/badge/Pydantic-E92063?logo=pydantic&logoColor=white)](https://docs.pydantic.dev/)
+[![pytest](https://img.shields.io/badge/tests-pytest-0A9EDC?logo=pytest&logoColor=white)](https://pytest.org/)
+[![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D6?logo=windows&logoColor=white)](#quick-start-no-coding-experience-needed)
+[![FlexSim 2027](https://img.shields.io/badge/FlexSim-2027-orange)](https://www.flexsim.com/)
+
 A working digital-twin integration, running locally: a real **FlexSim
 2027** warehouse model, a **Python bridge** that exposes its live state
 over HTTP/JSON, a **live dashboard**, and a physics-based **mock robot
@@ -62,12 +70,28 @@ pytest
 
 ## What this is
 
-```text
-FlexSim 2027 (simulation)
-        ↕ HTTP/JSON
-     bridge/  (FastAPI + live dashboard)
-        ↕ HTTP/JSON
-ros2_sim/  (mock "real" robot fleet today, real ROS2 in Phase 2)
+```mermaid
+flowchart LR
+    subgraph SIM["Simulation side"]
+        FX["FlexSim 2027<br/>(DG-FT-01.fsm)<br/>Process Flow loop"]
+    end
+
+    subgraph MID["bridge/ (FastAPI)"]
+        API["REST API<br/>/api/v1/telemetry<br/>/api/v1/real/telemetry"]
+        STORE["In-memory state stores<br/>(FlexSim side + real side, kept separate)"]
+        DASH["Live dashboard<br/>/dashboard"]
+        API --> STORE --> DASH
+    end
+
+    subgraph REAL["Real-environment side"]
+        SIMPY["ros2_sim/simulator.py<br/>(mock fleet today)"]
+        ROS["Future: real ROS2 node<br/>(Phase 2)"]
+    end
+
+    FX -- "HTTP/JSON, every 5s" --> API
+    SIMPY -- "HTTP/JSON, every 1s" --> API
+    ROS -. "same API, Phase 2" .-> API
+    DASH -- "GET /api/v1/real/config" --> SIMPY
 ```
 
 - **FlexSim side**: a Process Flow loop inside the model posts real
@@ -131,6 +155,38 @@ The single most useful entry point once everything is running:
   external JS or CSS dependencies; it's a single self-contained HTML page
   served by FastAPI.
 
+## Architecture: runtime flow
+
+```mermaid
+sequenceDiagram
+    participant FlexSim as FlexSim 2027
+    participant Bridge as bridge (FastAPI)
+    participant Sim as ros2_sim/simulator.py
+    participant User as Dashboard (browser)
+
+    loop every 5 simulated seconds
+        FlexSim->>Bridge: POST /api/v1/telemetry
+    end
+
+    loop every 1 second
+        Sim->>Bridge: POST /api/v1/real/telemetry
+        Sim->>Bridge: GET /api/v1/real/config
+    end
+
+    loop every 1 second
+        User->>Bridge: GET /api/v1/state
+        User->>Bridge: GET /api/v1/real/state
+        Bridge-->>User: latest telemetry, both sides
+    end
+
+    User->>Bridge: POST /api/v1/real/config (change fleet size)
+    Bridge-->>Sim: (picked up on Sim's next poll)
+```
+
+The two telemetry channels never merge. `state_store` holds FlexSim's
+latest snapshot, `real_environment_store` holds the real/ROS2 side's, and
+the dashboard reads both independently to render the comparison.
+
 ## Connecting FlexSim
 
 `start.bat` (or `.\run.ps1`) gives you the bridge and the mock
@@ -186,6 +242,34 @@ minutes: a genuine capacity mismatch downstream, visible precisely
 because the telemetry was flowing correctly. That's the point of a
 digital twin: it surfaces real problems, not only simulated ones.
 
+## Built with
+
+| Layer | Technology |
+|---|---|
+| Simulation | [FlexSim 2027](https://www.flexsim.com/) (FlexScript) |
+| API server | [Python 3.11+](https://www.python.org/), [FastAPI](https://fastapi.tiangolo.com/), [Uvicorn](https://www.uvicorn.org/) |
+| Validation | [Pydantic](https://docs.pydantic.dev/) |
+| Dashboard | Vanilla HTML/CSS/JS, `<canvas>` charts (no frontend framework, no build step) |
+| Real-environment simulator | Python, [httpx](https://www.python-httpx.org/) |
+| Testing | [pytest](https://pytest.org/) |
+| Future (Phase 2) | ROS 2 |
+
+## Limitations
+
+- Localhost-only; no authentication or TLS on the bridge's API.
+- Single FlexSim model instance and single bridge instance: no
+  multi-tenant routing.
+- The mock real-environment fleet (`ros2_sim/simulator.py`) is a
+  simplified physics model (constant acceleration, no obstacle avoidance
+  or path planning), not a robotics simulator. It's built to answer
+  fleet-sizing questions, not to validate control algorithms.
+- The command interface (bridge → FlexSim) is implemented and
+  unit-tested but not yet exercised against a real FlexSim consumer
+  polling and acknowledging commands.
+- In-memory storage only; state is lost on restart by design (see
+  `bridge/README.md` for the persistence-ready interface this is built
+  behind).
+
 ## Roadmap
 
 **Phase 1, done and working end to end:**
@@ -206,10 +290,8 @@ digital twin: it surfaces real problems, not only simulated ones.
 
 ## Contributing
 
-Issues and PRs welcome. If you're extending this to a different FlexSim
-model, don't assume object paths: click each object once in FlexSim and
-read the status bar for its real path before wiring it into the Custom
-Code block (see `bridge/flexsim/verified_scripts/README.md` for why).
+Issues and PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup,
+test instructions, and project conventions.
 
 ## License
 
