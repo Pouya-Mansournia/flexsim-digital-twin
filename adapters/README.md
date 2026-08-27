@@ -6,8 +6,15 @@ README's
 section: the boundary that keeps `rms/` free of FlexScript, ROS message,
 PLC protocol, or WMS-specific details.
 
-**Status: scaffolding.** Nothing here is wired into `rms/` or `bridge/`
-yet.
+**Status:** `flexsim/` has a working implementation, talking to the
+real, already-running `bridge/` REST API over the standard library's
+`urllib` (no extra dependency): `get_robots()` reads
+`GET /api/v1/state` and maps it into `rms.domain.Robot` objects,
+`send_command()` posts to `POST /api/v1/commands`. See
+`../tests/test_flexsim_adapter.py`. `ros2/`, `plc/`, and `external/` are
+still interfaces only, and none of this is called from `rms/`'s
+managers yet: they'd need to hold a `FlexSimAdapter` instance and use it
+in place of an in-memory `FleetManager`, which hasn't been done.
 
 ## Layout
 

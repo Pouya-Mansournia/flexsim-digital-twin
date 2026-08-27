@@ -344,10 +344,11 @@ dataclasses, and manager/adapter interfaces matching the architecture
 diagram above. `rms/missions`, `rms/tasks`, `rms/fleet`,
 `rms/workstations`, and `rms/scheduler` have working, unit-tested,
 in-memory implementations (a deterministic nearest-available scheduler,
-run with `pytest` from the repository root); `rms/traffic` and all of
-`adapters/` are still interfaces only, bodies raising
-`NotImplementedError` until they're built out. See
-[`rms/README.md`](rms/README.md) and
+run with `pytest` from the repository root). `adapters/flexsim` is also
+implemented and talks to the real `bridge/` API over `urllib`; `rms/traffic`
+and the rest of `adapters/` (`ros2/`, `plc/`, `external/`) are still
+interfaces only, bodies raising `NotImplementedError` until they're
+built out. See [`rms/README.md`](rms/README.md) and
 [`adapters/README.md`](adapters/README.md).
 
 ```text
