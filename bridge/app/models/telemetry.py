@@ -9,12 +9,30 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ProcessorState(BaseModel):
     state: str
-    utilization: float = Field(ge=0.0, le=1.0)
+    utilization: float = Field(ge=0.0)
+
+    @field_validator("utilization")
+    @classmethod
+    def clamp_utilization(cls, value: float) -> float:
+        """Clamp instead of reject.
+
+        `utilization` is meant to be a 0.0-1.0 ratio, but it's computed
+        by the FlexSim model itself (accumulated busy-time / elapsed
+        time; see bridge/flexsim/verified_scripts/README.md), and a
+        transient double-count there (e.g. a leftover Process Flow
+        token surviving a Reset) can briefly push it above 1.0. Erroring
+        on that used to reject the *entire* telemetry payload for that
+        tick — queues and robots included, not just the one processor —
+        which is a worse failure mode than a clamped number. The
+        FlexScript should still fix its own computation; see the
+        gotcha in verified_scripts/README.md.
+        """
+        return min(value, 1.0)
 
 
 class RobotState(BaseModel):

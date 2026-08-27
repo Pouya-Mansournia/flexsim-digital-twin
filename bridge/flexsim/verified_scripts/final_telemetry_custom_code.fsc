@@ -79,6 +79,22 @@ double util5 = 0.0; if (Model.time > 0) { util5 = Model.parameters.Proc5Busy / M
 double util6 = 0.0; if (Model.time > 0) { util6 = Model.parameters.Proc6Busy / Model.time; }
 double util7 = 0.0; if (Model.time > 0) { util7 = Model.parameters.Proc7Busy / Model.time; }
 
+// Mathematically, cumulative busy-time can never exceed cumulative
+// elapsed time (Model.time) in a correctly single-threaded loop, so
+// util should never exceed 1.0 by construction. If it does, this loop
+// is very likely running on more than one Process Flow token at once
+// (a stale token from before a Reset, still sitting in the Delay,
+// alongside the new one from Run) — see the "Duplicate Process Flow
+// token after Reset" gotcha in README.md for how to check and fix
+// that in the model. Clamping here is a safety net, not the real fix.
+if (util1 > 1.0) { util1 = 1.0; }
+if (util2 > 1.0) { util2 = 1.0; }
+if (util3 > 1.0) { util3 = 1.0; }
+if (util4 > 1.0) { util4 = 1.0; }
+if (util5 > 1.0) { util5 = 1.0; }
+if (util6 > 1.0) { util6 = 1.0; }
+if (util7 > 1.0) { util7 = 1.0; }
+
 json = json + "\"processors\": {";
 json = json + "\"Processor1\": {\"state\": \"" + state1 + "\", \"utilization\": " + util1 + "},";
 json = json + "\"Processor2\": {\"state\": \"" + state2 + "\", \"utilization\": " + util2 + "},";

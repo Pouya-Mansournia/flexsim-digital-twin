@@ -63,8 +63,22 @@ def test_reset_clears_state():
     assert client.get("/api/v1/state").json()["has_data"] is False
 
 
-def test_invalid_processor_utilization_is_rejected():
+def test_processor_utilization_above_one_is_clamped_not_rejected():
+    # A transient double-count in FlexSim's own busy-time accumulation
+    # (see bridge/flexsim/verified_scripts/README.md) can briefly push
+    # utilization above 1.0. That shouldn't drop the whole telemetry
+    # payload for that tick; it should just clamp the one number.
     payload = dict(VALID_TELEMETRY)
-    payload["processors"] = {"Processor1": {"state": "processing", "utilization": 5.0}}
+    payload["processors"] = {"Processor1": {"state": "processing", "utilization": 1.6}}
+    response = client.post("/api/v1/telemetry", json=payload)
+    assert response.status_code == 200
+
+    body = client.get("/api/v1/state").json()
+    assert body["telemetry"]["processors"]["Processor1"]["utilization"] == 1.0
+
+
+def test_negative_processor_utilization_is_still_rejected():
+    payload = dict(VALID_TELEMETRY)
+    payload["processors"] = {"Processor1": {"state": "processing", "utilization": -0.5}}
     response = client.post("/api/v1/telemetry", json=payload)
     assert response.status_code == 422

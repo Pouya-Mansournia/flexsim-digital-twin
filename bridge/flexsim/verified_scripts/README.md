@@ -134,6 +134,58 @@ Multiple Photo Eyes can be edited at once: select several in the
 `Edit Selected Objects` panel and use its Triggers section — confirmed
 faster than editing each of 16 objects individually.
 
+## Utilization occasionally above 1.0: duplicate Process Flow token after Reset
+
+Observed live against `DG-FT-01.fsm`: `utilization` for `Processor6`/
+`Processor7` occasionally arrived above `1.0` (as high as `1.6`),
+decaying back toward a normal value over the next minute or so of
+simulated time, then behaving correctly.
+
+Why this shouldn't be possible by construction: `util = ProcNBusy /
+Model.time`, and `ProcNBusy` only ever accumulates `dt = Model.time -
+LastSampleTime` once per loop iteration (see the Custom Code in
+`final_telemetry_custom_code.fsc`). Summed across every iteration since
+`Model.time = 0`, those `dt` values add up to exactly `Model.time` — so
+`ProcNBusy` (busy time, a subset of elapsed time) can never exceed
+`Model.time`, and `util` can never exceed `1.0`, **unless this Custom
+Code block is executing more than once per interval.**
+
+The most likely cause: FlexSim's **Reset does not automatically dispose
+tokens already in flight** inside a Process Flow's `Delay` block. If
+you press Reset while a token from the telemetry loop
+(`Source -> Custom Code -> Delay(5s) -> back to Custom Code`) is
+mid-`Delay`, then press Run again, the *old* token eventually fires
+alongside the *new* one from the `Source` — two tokens now looping the
+same Custom Code, each computing its own `dt` against the same shared
+`LastSampleTime` before either updates it, double-counting that
+interval's busy time. The effect decays over time because it's a
+one-time double-add to a growing cumulative sum, not a persistent bug —
+which matches exactly what was observed.
+
+**How to check:** open the Process Flow view while the model is running
+and look at the token count on the telemetry loop; more than one token
+circulating there confirms this.
+
+**How to fix it in the model** (not yet done — the code in this repo
+only clamps the *symptom*, see below): either explicitly clear the
+Process Flow's tokens as part of your Reset procedure (right-click the
+Process Flow → Reset, in addition to the model's own Reset), or add a
+guard Model Parameter (e.g. `TelemetryLoopActive`, `Continuous`, default
+`0`) that the Custom Code checks at the very top: if already `1`,
+immediately dispose the token and exit instead of running the body
+again, so at most one token's worth of logic executes per interval
+regardless of how many tokens exist.
+
+**What this repo does today as a safety net:**
+`final_telemetry_custom_code.fsc` clamps every `util` to `1.0` before
+sending, and the bridge's `ProcessorState.utilization` field clamps
+instead of rejecting out-of-range values (see
+`app/models/telemetry.py`) — a validation failure used to reject the
+*entire* telemetry payload for that tick (queues and robots included,
+not just the one processor), which is a worse failure mode than one
+clamped number. Both are symptom mitigation; the duplicate-token fix
+above is the real one, not yet applied to `DG-FT-01.fsm`.
+
 ## Files
 
 - **`final_telemetry_custom_code.fsc`** — the complete, current script.
