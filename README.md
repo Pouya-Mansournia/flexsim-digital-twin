@@ -112,6 +112,250 @@ flowchart LR
 
 <sub>The actual FlexSim 2027 model (`flexsim-model/DG-FT-01.fsm`) this project is built against: an Inbound sortation cell feeding an Outbound put-wall/rack area.</sub>
 
+## Vision: toward a Robot Management System (RMS)
+
+The working integration above is the foundation for something bigger:
+this project is evolving from a FlexSim digital-twin integration into a
+modular **Robot Management System (RMS)** for warehouse automation, with
+mission management, task orchestration, resource scheduling, fleet
+management, traffic coordination, and workstation integration sitting on
+top of it.
+
+The design principle stays simple:
+
+> **FlexSim validates decisions. RMS makes decisions. ROS 2 executes
+> robot-level behavior.**
+
+That separation keeps orchestration logic independent of any one
+simulator, robot vendor, or warehouse system, so the RMS stays useful
+even if the simulation platform or robot fleet changes underneath it.
+
+```mermaid
+flowchart TB
+    subgraph EXT["Enterprise & external systems"]
+        WMS["WMS"]
+        ERP["ERP"]
+        OMS["OMS"]
+        MES["MES"]
+    end
+
+    EIM["External interface / API gateway<br/>REST, events, future adapters"]
+    WMS <--> EIM
+    ERP <--> EIM
+    OMS <--> EIM
+    MES <--> EIM
+
+    subgraph RMS["Robot Management System (RMS Core)"]
+        direction TB
+        MM["Mission Manager<br/>business-level transport missions"]
+        TM["Task Manager<br/>mission decomposition & task lifecycle"]
+        RS["Resource Scheduler<br/>robot / workstation assignment"]
+        FM["Fleet Manager<br/>availability, capability, battery, state"]
+        TRM["Traffic Manager<br/>zones, congestion, coordination"]
+        WM["Workstation Manager<br/>stations, queues, readiness"]
+
+        MM --> TM --> RS
+        RS <--> FM
+        RS <--> TRM
+        RS <--> WM
+    end
+    EIM <--> MM
+
+    subgraph INT["Device & integration layer"]
+        RAI["Robot Adapter"]
+        WAI["Workstation / PLC Adapter"]
+        DTA["Digital Twin Adapter"]
+    end
+    FM <--> RAI
+    TRM <--> RAI
+    WM <--> WAI
+    RS <--> DTA
+
+    subgraph DT["Digital twin (simulation & validation)"]
+        FLEX["FlexSim 2027<br/>warehouse model"]
+        SIM["Scenario & what-if validation"]
+        FLEX <--> SIM
+    end
+    DTA <--> FLEX
+
+    subgraph REAL["Real warehouse execution"]
+        ROS["ROS 2 integration node"]
+        NAV["Nav2 / robot navigation"]
+        AMR["AMR fleet"]
+        PLC["PLC / workstations / automation"]
+        ROS <--> NAV <--> AMR
+    end
+    RAI <--> ROS
+    WAI <--> PLC
+
+    OBS["Dashboard & observability<br/>twin vs. real, KPIs, backlog, fleet state"]
+    FLEX --> OBS
+    RMS --> OBS
+    ROS --> OBS
+    PLC --> OBS
+```
+
+| Layer | Responsibility |
+|---|---|
+| WMS / ERP / OMS / MES | Business demand, inventory, orders, warehouse workflows |
+| External Interface | Stable boundary between enterprise systems and the RMS |
+| Mission Manager | Converts external requests into transport/robotic missions |
+| Task Manager | Breaks missions into executable tasks and tracks their lifecycle |
+| Resource Scheduler | Picks the best robot/workstation/resource for each task |
+| Fleet Manager | Tracks robot capability, availability, battery, and state |
+| Traffic Manager | Coordinates shared-space traffic, congestion, zone reservations |
+| Workstation Manager | Tracks workstation availability, queues, readiness |
+| Device Adapters | Isolate the RMS from robot, PLC, simulator, and vendor protocols |
+| FlexSim | Digital twin, capacity analysis, what-if simulation, decision validation |
+| ROS 2 / Nav2 | Robot-side execution, navigation, hardware integration |
+| Dashboard | Operational observability and digital-twin/real-system comparison |
+
+### FlexSim is not the RMS
+
+```mermaid
+flowchart TB
+    BIZ["Business systems"] --> RMSN["RMS<br/>decide & coordinate"]
+    RMSN --> FS["FlexSim<br/>validate<br/>virtual warehouse"]
+    RMSN --> R2["ROS 2<br/>execute<br/>real warehouse"]
+```
+
+This lets the RMS keep working even if the simulation platform or robot
+vendor changes; future adapters can support other simulation or
+execution environments without rewriting the RMS core.
+
+### From observation to a decide-and-execute loop
+
+Today the system closes the *observation* side of the loop: telemetry
+flows from the model into the bridge into dashboard state. The RMS
+extends this into a full loop:
+
+```mermaid
+flowchart LR
+    O["Observe"] --> U["Understand"] --> D["Decide"] --> S["Schedule"] --> DI["Dispatch"] --> E["Execute"] --> O
+```
+
+A future mission might look like:
+
+```json
+{
+  "mission_id": "mission-128",
+  "type": "move_tote",
+  "source": "Inbound",
+  "destination": "Workstation-03",
+  "priority": 7
+}
+```
+
+The Resource Scheduler would weigh fleet state (robot availability,
+battery, travel cost, current utilization) and assign it, say, to
+`AMR-02` heading to `Workstation-03`. The same assignment logic could
+then run inside FlexSim for validation, inside the mock environment
+during development, or through ROS 2 against a real AMR, without
+changing the scheduling code itself.
+
+An initial scheduler score might look like:
+
+```text
+score(robot, task) = w1 * travel_cost + w2 * battery_penalty
+                    + w3 * queue_cost + w4 * utilization_cost
+                    + w5 * priority_penalty
+```
+
+starting with deterministic heuristics (nearest-available, FIFO,
+priority-based, battery-aware, congestion-aware) before anything
+optimization- or learning-based, so results stay understandable and
+reproducible. FlexSim becomes the environment for comparing these
+policies under repeatable conditions before any of them touch a real
+robot.
+
+### Development roadmap
+
+**Phase 1, Digital Twin Foundation, done and working:**
+- FlexSim 2027 warehouse model talking to a FastAPI bridge over
+  HTTP/JSON.
+- Queue, processor, robot, and throughput telemetry.
+- Separate real/mock environment telemetry channel.
+- Live dashboard, configurable mock robot fleet, command API, automated
+  tests, verified FlexScript integration.
+
+**Phase 2, close the simulation control loop, next:**
+- FlexSim polling and executing commands, with acknowledgment, so the
+  bridge to FlexSim direction is exercised end to end (not just
+  implemented server-side, as it is today).
+- Command lifecycle visibility, failure and timeout handling.
+
+**Phase 3, RMS Core:**
+- Domain model, Mission Manager, Task Manager, Resource Scheduler, Fleet
+  Manager, Workstation Manager.
+- An initial deterministic scheduling policy and a mission/task state
+  machine, instrumented with scheduler KPIs.
+
+**Phase 4, ROS 2 execution:**
+- A ROS 2 adapter replacing the mock fleet with a ROS 2-connected
+  environment: robot-state ingestion, RMS task dispatch, Nav2
+  integration, mission feedback, fault and battery/state handling.
+
+**Phase 5, traffic management:**
+- Zone model, route reservations, congestion metrics, deadlock
+  prevention, multi-robot coordination, dynamic replanning signals.
+
+**Phase 6, enterprise & workstation integration:**
+- An external API contract, WMS/OMS/MES adapter patterns, a workstation
+  abstraction, a PLC/OPC UA adapter, inventory/order context.
+
+**Phase 7, simulation-validated scheduling:**
+- Scheduling-policy comparison, fleet-sizing experiments, failure and
+  workstation-outage scenarios, demand-surge and battery/charging
+  scenarios, all evaluated by KPI.
+
+### Design principles
+
+1. **The RMS owns orchestration.** Business-level robot decisions belong
+   in the RMS, not in FlexSim or individual robot controllers.
+2. **FlexSim owns simulation.** It models warehouse behavior and
+   validates operational decisions, nothing more.
+3. **ROS 2 owns robot integration.** It connects the RMS to navigation,
+   localization, robot drivers, and real hardware.
+4. **Adapters protect the core.** The RMS domain shouldn't depend
+   directly on FlexScript, ROS messages, PLC protocols, or WMS-specific
+   schemas.
+5. **Simulation and reality stay distinguishable.** Digital-twin state
+   and real-system state remain independently observable, never merged
+   (see the note on Reset behavior in [`bridge/README.md`](bridge/README.md)).
+6. **Start deterministic.** The first scheduler should be understandable,
+   measurable, and reproducible before any optimization or learning is
+   introduced.
+7. **Every decision should be measurable.** Scheduling policies get
+   evaluated against explicit operational KPIs, not intuition.
+
+### Key KPIs the architecture is meant to support
+
+| Category | Examples |
+|---|---|
+| Warehouse | Throughput, order cycle time, queue length and wait time, workstation utilization, bottleneck duration |
+| Fleet | Robot utilization, idle time, mission completion time, distance traveled, battery/charging time, failed missions |
+| Scheduler | Assignment latency, task waiting time, reassignment count, workload balance, congestion impact |
+| Digital twin | Simulated vs. real throughput and cycle time, queue deviation, fleet utilization deviation, prediction error |
+
+### Target repository structure
+
+The current layout (see below) is expected to evolve toward:
+
+```text
+flexsim-digital-twin/
+├── rms/                RMS core: missions, tasks, scheduler, fleet,
+│                        traffic, workstations, domain model
+├── adapters/            flexsim/, ros2/, plc/, external/
+├── bridge/               api/, services/, dashboard/
+├── flexsim-model/
+├── tests/
+├── assets/
+└── README.md
+```
+
+This is a target, not a claim about what exists today; the current
+layout is documented below.
+
 ## Repository layout
 
 ```text
@@ -252,7 +496,7 @@ digital twin: it surfaces real problems, not only simulated ones.
 | Dashboard | Vanilla HTML/CSS/JS, `<canvas>` charts (no frontend framework, no build step) |
 | Real-environment simulator | Python, [httpx](https://www.python-httpx.org/) |
 | Testing | [pytest](https://pytest.org/) |
-| Future (Phase 2) | ROS 2 |
+| Future (Phase 2+) | ROS 2, Nav2, an RMS core in Python, OPC UA/PLC adapters |
 
 ## Limitations
 
@@ -272,21 +516,19 @@ digital twin: it surfaces real problems, not only simulated ones.
 
 ## Roadmap
 
-**Phase 1, done and working end to end:**
-- FlexSim to bridge over local HTTP/JSON.
-- Live dashboard with FlexSim-vs-real comparison.
-- Mock real-environment robot fleet with a live-configurable size.
-- Command interface (`POST /api/v1/commands`, poll, ack): implemented and
-  unit-tested, not yet exercised against a real FlexSim consumer.
+Phase 1 (this repository, today) is done and working end to end: FlexSim
+to bridge over local HTTP/JSON, a live dashboard with FlexSim-vs-real
+comparison, a mock real-environment robot fleet with a live-configurable
+size, and a command interface (`POST /api/v1/commands`, poll, ack) that's
+implemented and unit-tested but not yet exercised against a real FlexSim
+consumer.
 
-**Phase 2, not started:**
-- A ROS2 node replacing `ros2_sim/simulator.py`, publishing to real
-  topics (`/warehouse/state`, `/amr/state`, `/flexsim/events`) and
-  consuming commands, behind the same `/api/v1/real/*` API with no
-  changes to the bridge.
-- FlexSim executing commands the bridge hands it (the reverse direction:
-  bridge to FlexSim), currently implemented server-side but not yet
-  wired into the model.
+Beyond Phase 1, this project is meant to grow into a full Robot
+Management System, not just a ROS2 swap-in. See
+[Vision: toward a Robot Management System (RMS)](#vision-toward-a-robot-management-system-rms)
+above for the complete phase-by-phase roadmap (closing the FlexSim
+command loop, the RMS core, ROS 2 execution, traffic management,
+enterprise integration, and simulation-validated scheduling).
 
 ## Contributing
 
