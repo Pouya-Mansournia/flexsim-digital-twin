@@ -14,21 +14,27 @@ FlexSim" section.
 
 Run from the repository root:
 
-    python examples/live_flexsim_rms_demo.py
+    python examples/live_flexsim_rms_demo.py           one scheduling cycle, then exit
+    python examples/live_flexsim_rms_demo.py --loop     repeat every 5s until Ctrl+C
+    python examples/live_flexsim_rms_demo.py --loop --interval 2
 
-This is a demonstration, not a service: it runs one scheduling cycle,
-prints its result, and exits. It also posts the decision to
-POST /api/v1/rms/decision (best-effort) so it shows up on the live
-dashboard's "RMS Scheduling Decision" panel at
-http://127.0.0.1:8000/dashboard. It shows the current wiring, not a
-claim that the RMS is deployable: most of adapters/ (ros2/, plc/,
-external/) is still interface-only (see rms/README.md).
+By default this runs one scheduling cycle and exits: it's a
+demonstration of the wiring, not a service. Nothing else in this
+repository re-schedules on its own, so the dashboard's "RMS Scheduling
+Decision" panel only updates when this script (or something else
+posting to POST /api/v1/rms/decision) runs; unlike FlexSim's and
+ros2_sim's telemetry, an RMS decision isn't produced on a timer unless
+you ask for one with --loop. It shows the current wiring, not a claim
+that the RMS is deployable: most of adapters/ (ros2/, plc/, external/)
+is still interface-only (see rms/README.md).
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -76,10 +82,11 @@ def post_decision_to_dashboard(
         pass
 
 
-def main() -> int:
-    adapter = FlexSimAdapter()
-    orchestrator = RmsOrchestrator(adapter)
-
+def run_once(orchestrator: RmsOrchestrator) -> int:
+    """Sync fleet/workstation state, schedule and dispatch one mission,
+    print the result, and post it to the dashboard. Returns a process
+    exit code (0 success, 1 failure) so callers can use it either way.
+    """
     try:
         robots = orchestrator.sync_fleet()
     except IntegrationError as exc:
@@ -106,7 +113,10 @@ def main() -> int:
         print(f"\n[FlexSim] {len(workstations)} workstation(s)/queue(s) received\n")
         for ws in workstations:
             print(f"{ws.workstation_id:<12} {ws.status.value.upper():<10} queue={ws.queue_length}")
-        destination = workstations[0].workstation_id
+        # Send each cycle toward whichever queue currently has the
+        # biggest backlog, so a --loop run visibly reacts to changing
+        # telemetry instead of always scheduling toward the same queue.
+        destination = max(workstations, key=lambda w: w.queue_length).workstation_id
     else:
         destination = "workstation_03"
 
@@ -135,11 +145,49 @@ def main() -> int:
     print("\nCommand sent:")
     print(f"  command_id = {result.command_id}")
 
-    post_decision_to_dashboard(adapter.bridge_url, mission_type, source, result, breakdown)
-    print(f"\nPosted decision to {adapter.bridge_url}/dashboard")
+    post_decision_to_dashboard(orchestrator.adapter.bridge_url, mission_type, source, result, breakdown)
+    print(f"\nPosted decision to {orchestrator.adapter.bridge_url}/dashboard")
 
     print("\nRMS live integration: PASS")
     return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--loop",
+        action="store_true",
+        help="keep scheduling repeatedly instead of running once (Ctrl+C to stop)",
+    )
+    parser.add_argument(
+        "--interval",
+        type=float,
+        default=5.0,
+        help="seconds between cycles in --loop mode (default: 5)",
+    )
+    args = parser.parse_args()
+
+    adapter = FlexSimAdapter()
+    # One orchestrator reused across cycles in --loop mode, so
+    # ResourceScheduler's per-robot assignment counts (utilization_cost)
+    # keep accumulating across cycles instead of resetting each time.
+    orchestrator = RmsOrchestrator(adapter)
+
+    if not args.loop:
+        return run_once(orchestrator)
+
+    print(f"Looping every {args.interval:.0f}s. Press Ctrl+C to stop.\n")
+    cycle = 0
+    try:
+        while True:
+            cycle += 1
+            print(f"=== Cycle {cycle} ===")
+            run_once(orchestrator)
+            print()
+            time.sleep(args.interval)
+    except KeyboardInterrupt:
+        print("\nStopped.")
+        return 0
 
 
 if __name__ == "__main__":

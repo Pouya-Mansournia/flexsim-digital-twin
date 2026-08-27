@@ -51,14 +51,21 @@ Every RMS run also posts its decision to the live dashboard: see
 ### Dashboard integration
 
 `examples/live_flexsim_rms_demo.py` posts each decision (best-effort) to
-`bridge/`'s new `POST /api/v1/rms/decision` endpoint after dispatching
-it, and `bridge/`'s dashboard (`http://127.0.0.1:8000/dashboard`) has an
-"RMS Scheduling Decision" panel that polls
-`GET /api/v1/rms/decision` every second and renders the selected robot,
-score, and full cost breakdown. This is a read-only observability
-channel: the bridge stores the latest decision but never acts on it.
-See `bridge/app/models/rms_decision.py`, `bridge/app/api/rms_decision.py`,
+`bridge/`'s `POST /api/v1/rms/decision` endpoint after dispatching it,
+and `bridge/`'s dashboard (`http://127.0.0.1:8000/dashboard`) has an
+"RMS Scheduling Decision" panel that polls `GET /api/v1/rms/decision`
+every second and renders the selected robot, score, and full cost
+breakdown. This is a read-only observability channel: the bridge stores
+the latest decision but never acts on it. See
+`bridge/app/models/rms_decision.py`, `bridge/app/api/rms_decision.py`,
 and `bridge/tests/test_rms_decision.py`.
+
+Nothing schedules on a timer by itself: unlike FlexSim's and the mock
+fleet's telemetry, the demo script runs once and exits by default, so
+the panel only updates when something posts a new decision. Pass
+`--loop` (or double-click `bridge/start_rms_loop.bat`) to keep
+scheduling every 5 seconds instead, so the panel behaves like the rest
+of the dashboard.
 
 ## Layout
 

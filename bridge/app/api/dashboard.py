@@ -50,6 +50,7 @@ _DASHBOARD_HTML = """<!doctype html>
     --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
   }
   * { box-sizing: border-box; }
+  html, body { max-width: 100%; overflow-x: hidden; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Arial, sans-serif;
@@ -151,12 +152,16 @@ _DASHBOARD_HTML = """<!doctype html>
   }
   .panel:first-child { margin-top: 0; }
   .panel h2 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
     font-size: 13px;
     font-weight: 650;
     margin: 0 0 14px;
     letter-spacing: -0.005em;
   }
-  .panel h2 .hint { font-weight: 450; color: var(--muted); font-size: 11.5px; margin-left: 6px; }
+  .panel h2 .hint { font-weight: 450; color: var(--muted); font-size: 11.5px; margin-left: 0; }
 
   canvas { width: 100%; height: 250px; display: block; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -576,6 +581,7 @@ function drawComparisonChart(flexQueues, realQueues) {
   const allValues = names.flatMap(n => [flexQueues[n] || 0, realQueues[n] || 0]);
   const maxVal = Math.max(1, ...allValues);
   const padding = 30;
+  const topPadding = 26; // room for the legend row + tallest bar's value label, so neither overlaps the other
   const chartH = h - padding;
   const groupGap = 24;
   const barGap = 4;
@@ -594,7 +600,7 @@ function drawComparisonChart(flexQueues, realQueues) {
     const realVal = realQueues[name] || 0;
     const groupX = padding + groupGap + i * (groupW + groupGap);
 
-    const flexH = (flexVal / maxVal) * (chartH - 24);
+    const flexH = (flexVal / maxVal) * (chartH - topPadding);
     comparisonCtx.fillStyle = flexColor;
     comparisonCtx.fillRect(groupX, chartH - flexH, barW, flexH);
     comparisonCtx.fillStyle = textColor;
@@ -602,7 +608,7 @@ function drawComparisonChart(flexQueues, realQueues) {
     comparisonCtx.textAlign = 'center';
     comparisonCtx.fillText(String(flexVal), groupX + barW / 2, chartH - flexH - 4);
 
-    const realH = (realVal / maxVal) * (chartH - 24);
+    const realH = (realVal / maxVal) * (chartH - topPadding);
     const realX = groupX + barW + barGap;
     comparisonCtx.fillStyle = realColor;
     comparisonCtx.fillRect(realX, chartH - realH, barW, realH);

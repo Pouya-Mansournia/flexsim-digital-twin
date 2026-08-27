@@ -28,7 +28,7 @@ for what's implemented today versus planned.
 
 ## Quick start (no coding experience needed)
 
-One double-click, or three separate ones if you'd rather start each
+One double-click, or four separate ones if you'd rather start each
 piece on its own.
 
 1. **Install Python** (only once, if you don't already have it):
@@ -38,10 +38,12 @@ piece on its own.
 3. **Double-click `start_all.bat`** in the repository root. It opens
    the bridge in its own window (setting things up the first time,
    about a minute), opens the mock real-environment fleet in a second
-   window, runs one RMS scheduling decision so the dashboard has
-   something to show right away, and opens your browser to the live
-   dashboard automatically. Close the "FlexSim Bridge" or "ROS2 Mock
-   Fleet" windows to stop those pieces.
+   window, starts a repeating RMS scheduling loop in a third window so
+   the dashboard's "RMS Scheduling Decision" panel keeps updating on
+   its own, and opens your browser to the live dashboard automatically.
+   It waits for each piece to actually be ready rather than guessing a
+   fixed delay, so first-time setup taking a minute or more is fine.
+   Close any of the three windows to stop that piece.
 
 Prefer to start things one at a time (or only some of them)? Every
 piece `start_all.bat` runs also works completely on its own:
@@ -50,7 +52,8 @@ piece `start_all.bat` runs also works completely on its own:
 |---|---|
 | `bridge\start.bat` | Just the bridge + dashboard |
 | `bridge\start_ros2_sim.bat` | Just the mock robot fleet (after the bridge is up) |
-| `python examples\live_flexsim_rms_demo.py` | Just one RMS scheduling run (needs a command line) |
+| `bridge\start_rms_loop.bat` | Just the repeating RMS scheduler (needs robot telemetry) |
+| `python examples\live_flexsim_rms_demo.py` | One RMS scheduling run, then exit (needs a command line) |
 
 That's it. `http://127.0.0.1:8000/dashboard` is now live in your browser.
 To connect the actual FlexSim 2027 model instead of just the mock
@@ -393,6 +396,15 @@ dependency). Run it live yourself, with `bridge/` up, via
 python examples\live_flexsim_rms_demo.py
 ```
 
+By default that runs one cycle and exits, matching what most people
+want to try first. Pass `--loop` to keep scheduling repeatedly
+(`--interval` sets the seconds between cycles, default 5), the same
+way `bridge\start_rms_loop.bat` does for the dashboard's benefit:
+
+```powershell
+python examples\live_flexsim_rms_demo.py --loop
+```
+
 The scheduler's `queue_cost` and `utilization_cost` terms are wired in
 too now: `queue_cost` comes from real FlexSim queue backlog via
 `FlexSimAdapter.get_workstations()`, and `utilization_cost` is the
@@ -406,12 +418,14 @@ in-memory zone-reservation implementation too, though it isn't wired
 into the scheduler yet. `adapters/` (`ros2/`, `plc/`, `external/`) is
 still interfaces only.
 
-Every live run also shows up on the dashboard: `bridge/` has a new
+Every run also shows up on the dashboard: `bridge/` has a
 `POST`/`GET /api/v1/rms/decision` endpoint (read-only observability, the
 bridge never acts on it), and the dashboard's "RMS Scheduling Decision"
-panel polls it live, showing the selected robot, score, and full cost
-breakdown from the run you triggered with
-`python examples\live_flexsim_rms_demo.py`.
+panel polls it every second, showing the selected robot, score, and
+full cost breakdown from the latest posted run. Nothing schedules on a
+timer by itself, unlike FlexSim's and the mock fleet's telemetry, so
+without `--loop` (or `start_rms_loop.bat`) running somewhere, that
+panel only updates when you trigger a run yourself.
 Unit tests (`pytest` from the repository root) need nothing running;
 one integration test additionally exercises the live path and
 self-skips if `bridge/` isn't up. See [`rms/README.md`](rms/README.md)
@@ -429,9 +443,10 @@ flexsim-digital-twin/
 └── README.md
 ```
 
-Nothing in `rms/` or `adapters/` is wired into `bridge/` yet; the
-working system today is exactly what's documented in "Repository
-layout" below.
+`adapters/flexsim` and `rms/services/orchestrator.py` are wired into
+`bridge/` today, over its existing HTTP API (see the vertical slice
+above); `rms/traffic` and the rest of `adapters/` are not yet. See
+"Repository layout" below for what exists on disk right now.
 
 ## Repository layout
 
@@ -452,6 +467,7 @@ flexsim-digital-twin/
 │   ├── tests/                    pytest suite (25 tests)
 │   ├── start.bat                  double-click to set up and run just the bridge
 │   ├── start_ros2_sim.bat          double-click to run just the mock fleet
+│   ├── start_rms_loop.bat          double-click to run the repeating RMS scheduler
 │   ├── run.ps1                     what start.bat calls under the hood
 │   └── README.md                   full bridge documentation
 │
@@ -461,7 +477,7 @@ flexsim-digital-twin/
 │   └── README.md
 ├── adapters/                   flexsim/ (implemented), ros2/, plc/, external/ (interfaces)
 ├── examples/
-│   └── live_flexsim_rms_demo.py   one live RMS scheduling run against the real bridge
+│   └── live_flexsim_rms_demo.py   RMS scheduling run(s) against the real bridge (--loop to repeat)
 ├── tests/                      rms/ + adapters/ unit tests (pytest from repo root)
 │
 ├── start_all.bat               double-click to start the bridge + mock fleet + one RMS run
