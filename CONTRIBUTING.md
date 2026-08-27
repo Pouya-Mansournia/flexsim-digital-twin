@@ -33,6 +33,10 @@ API endpoints or service logic.
 - `bridge/ros2_sim/` — the mock real-environment simulator.
 - `bridge/flexsim/` — FlexSim-side integration docs and FlexScript.
 - `flexsim-model/` — the FlexSim 2027 model file.
+- `rms/`, `adapters/` — Robot Management System scaffolding (domain
+  model, manager/adapter interfaces). Not wired into `bridge/` yet; see
+  [`rms/README.md`](rms/README.md) and
+  [`adapters/README.md`](adapters/README.md) before extending them.
 
 ## Extending this to a different FlexSim model
 

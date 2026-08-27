@@ -339,7 +339,12 @@ robot.
 
 ### Target repository structure
 
-The current layout (see below) is expected to evolve toward:
+`rms/` and `adapters/` already exist as scaffolding: module boundaries,
+domain dataclasses, and manager/adapter interfaces matching the
+architecture diagram above, with method bodies raising
+`NotImplementedError` until the actual logic (Phase 3 onward) is built.
+See [`rms/README.md`](rms/README.md) and
+[`adapters/README.md`](adapters/README.md).
 
 ```text
 flexsim-digital-twin/
@@ -353,8 +358,9 @@ flexsim-digital-twin/
 └── README.md
 ```
 
-This is a target, not a claim about what exists today; the current
-layout is documented below.
+Nothing in `rms/` or `adapters/` is wired into `bridge/` yet; the
+working system today is exactly what's documented in "Repository
+layout" below.
 
 ## Repository layout
 
