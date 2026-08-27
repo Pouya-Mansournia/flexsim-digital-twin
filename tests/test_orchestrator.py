@@ -7,15 +7,22 @@ from __future__ import annotations
 
 import pytest
 
-from rms.domain import Robot, RobotStatus
+from rms.domain import Robot, RobotStatus, Workstation, WorkstationStatus
 from rms.services import IntegrationError, RmsOrchestrator
 
 
 class FakeAdapter:
     """Minimal stand-in for adapters.flexsim.FlexSimAdapter."""
 
-    def __init__(self, robots: list[Robot], fail_get: bool = False, fail_send: bool = False) -> None:
+    def __init__(
+        self,
+        robots: list[Robot],
+        workstations: list[Workstation] | None = None,
+        fail_get: bool = False,
+        fail_send: bool = False,
+    ) -> None:
         self._robots = robots
+        self._workstations = workstations or []
         self.fail_get = fail_get
         self.fail_send = fail_send
         self.sent_commands: list[tuple[str, str, dict]] = []
@@ -24,6 +31,11 @@ class FakeAdapter:
         if self.fail_get:
             raise ConnectionError("simulated bridge outage")
         return self._robots
+
+    def get_workstations(self) -> list[Workstation]:
+        if self.fail_get:
+            raise ConnectionError("simulated bridge outage")
+        return self._workstations
 
     def send_command(self, target: str, command_type: str, parameters=None) -> str:
         if self.fail_send:
@@ -81,3 +93,27 @@ def test_run_mission_wraps_send_command_failure_as_integration_error():
 
     with pytest.raises(IntegrationError):
         orchestrator.run_mission("move_tote", "inbound", "workstation_03")
+
+
+def test_sync_workstations_feeds_queue_cost_into_scheduling():
+    # Two otherwise-identical robots; only the destination's queue
+    # backlog should be able to break the tie between them.
+    robots = [
+        Robot(robot_id="AGV1", status=RobotStatus.AVAILABLE),
+        Robot(robot_id="AGV2", status=RobotStatus.AVAILABLE),
+    ]
+    workstations = [
+        Workstation(workstation_id="Queue1", status=WorkstationStatus.READY, queue_length=20)
+    ]
+    orchestrator = RmsOrchestrator(FakeAdapter(robots, workstations))
+    orchestrator.sync_fleet()
+    orchestrator.sync_workstations()
+
+    result = orchestrator.run_mission("move_tote", "inbound", "Queue1")
+
+    assert result.selected_robot.robot_id in {"AGV1", "AGV2"}
+    # queue_cost is the same for both robots (same destination), so this
+    # mainly proves the sync path runs end to end without error and the
+    # scheduler had a workstation_manager wired to it from construction.
+    breakdown = orchestrator.scheduler.breakdown(result.selected_robot, result.task)
+    assert breakdown.queue_cost == 20.0

@@ -18,7 +18,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from rms.domain import Robot, RobotStatus
+from rms.domain import Robot, RobotStatus, Workstation, WorkstationStatus
 
 IDLE_STATE_NAMES = {"idle", "available", "waiting"}
 
@@ -82,6 +82,28 @@ class FlexSimAdapter:
                 )
             )
         return result
+
+    def get_workstations(self) -> list[Workstation]:
+        """Fetch GET /api/v1/state and map FlexSim's queues into
+        rms/domain Workstation objects, one per named queue, so the
+        Resource Scheduler has real backlog data to feed `queue_cost`.
+        FlexSim has no notion of a "workstation" as such; a queue is
+        the closest analog it reports today. Returns an empty list if
+        no telemetry has arrived yet.
+        """
+        state = self._get_json("/api/v1/state")
+        if not state.get("has_data"):
+            return []
+
+        telemetry = state.get("telemetry") or {}
+        queues = telemetry.get("queues", {})
+        model_status = str(telemetry.get("model_status", "")).lower()
+        status = WorkstationStatus.READY if model_status == "running" else WorkstationStatus.OFFLINE
+
+        return [
+            Workstation(workstation_id=name, status=status, queue_length=int(count))
+            for name, count in queues.items()
+        ]
 
     def send_command(self, target: str, command_type: str, parameters: dict[str, Any] | None = None) -> str:
         """POST /api/v1/commands and return the command id for the RMS

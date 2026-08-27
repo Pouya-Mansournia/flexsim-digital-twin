@@ -360,12 +360,14 @@ dependency). Run it live yourself, with `bridge/` up, via
 python examples\live_flexsim_rms_demo.py
 ```
 
-`rms/traffic` and the rest of `adapters/` (`ros2/`, `plc/`, `external/`)
-are still interfaces only, bodies raising `NotImplementedError` until
-they're built out, and the scheduler's `queue_cost`/`utilization_cost`
-terms stay at 0 until `WorkstationManager`/`TrafficManager` data feeds
-them. Unit tests (`pytest` from the repository root) need nothing
-running; one integration test additionally exercises the live path and
+The scheduler's `queue_cost` and `utilization_cost` terms are wired in
+too now: `queue_cost` comes from real FlexSim queue backlog via
+`FlexSimAdapter.get_workstations()`, and `utilization_cost` is the
+scheduler's own running per-robot assignment count, for basic load
+balancing between otherwise-equal robots. `rms/traffic` and the rest of
+`adapters/` (`ros2/`, `plc/`, `external/`) are still interfaces only.
+Unit tests (`pytest` from the repository root) need nothing running;
+one integration test additionally exercises the live path and
 self-skips if `bridge/` isn't up. See [`rms/README.md`](rms/README.md)
 and [`adapters/README.md`](adapters/README.md).
 

@@ -1,8 +1,9 @@
 import pytest
 
-from rms.domain import Robot, RobotStatus, Task, TaskStatus
+from rms.domain import Robot, RobotStatus, Task, TaskStatus, Workstation, WorkstationStatus
 from rms.scheduler import ResourceScheduler
 from rms.scheduler.resource_scheduler import NoCandidateRobotError
+from rms.workstations import WorkstationManager
 
 
 def make_task() -> Task:
@@ -64,3 +65,41 @@ def test_lower_battery_increases_score():
     low_battery = Robot(robot_id="AMR-low", status=RobotStatus.AVAILABLE, battery_pct=10.0)
 
     assert scheduler.score(low_battery, task) > scheduler.score(full_battery, task)
+
+
+def test_queue_cost_comes_from_workstation_manager():
+    workstations = WorkstationManager()
+    scheduler = ResourceScheduler(workstation_manager=workstations)
+    task = make_task()  # location="Workstation-03"
+    robot = Robot(robot_id="AMR-1", status=RobotStatus.AVAILABLE)
+
+    score_unknown_destination = scheduler.score(robot, task)
+
+    workstations.register(
+        Workstation(workstation_id="Workstation-03", status=WorkstationStatus.READY, queue_length=12)
+    )
+    score_with_backlog = scheduler.score(robot, task)
+
+    assert score_with_backlog > score_unknown_destination
+
+
+def test_queue_cost_is_zero_without_a_workstation_manager():
+    scheduler = ResourceScheduler()  # no workstation_manager passed
+    robot = Robot(robot_id="AMR-1", status=RobotStatus.AVAILABLE)
+
+    breakdown = scheduler.breakdown(robot, make_task())
+
+    assert breakdown.queue_cost == 0.0
+
+
+def test_utilization_cost_penalizes_a_robot_already_assigned_this_run():
+    scheduler = ResourceScheduler()
+    a = Robot(robot_id="AMR-a", status=RobotStatus.AVAILABLE)
+    b = Robot(robot_id="AMR-b", status=RobotStatus.AVAILABLE)
+
+    first_pick = scheduler.assign(make_task(), [a, b])
+    second_pick = scheduler.assign(make_task(), [a, b])
+
+    # Equally-positioned, equally-charged robots: the one already
+    # assigned once should lose out to the untouched one next time.
+    assert first_pick.robot_id != second_pick.robot_id

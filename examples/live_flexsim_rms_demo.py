@@ -58,7 +58,19 @@ def main() -> int:
     for robot in robots:
         print(f"{robot.robot_id:<12} {robot.status.value.upper():<10} battery={robot.battery_pct:.0f}%")
 
-    mission_type, source, destination = "move_tote", "inbound", "workstation_03"
+    try:
+        workstations = orchestrator.sync_workstations()
+    except IntegrationError:
+        workstations = []
+    if workstations:
+        print(f"\n[FlexSim] {len(workstations)} workstation(s)/queue(s) received\n")
+        for ws in workstations:
+            print(f"{ws.workstation_id:<12} {ws.status.value.upper():<10} queue={ws.queue_length}")
+        destination = workstations[0].workstation_id
+    else:
+        destination = "workstation_03"
+
+    mission_type, source = "move_tote", "inbound"
     try:
         result = orchestrator.run_mission(mission_type, source, destination, priority=5)
     except IntegrationError as exc:
@@ -68,9 +80,15 @@ def main() -> int:
 
     print(f"\nMission created:\n  {mission_type} {source} -> {destination}")
 
+    breakdown = orchestrator.scheduler.breakdown(result.selected_robot, result.task)
     print("\nScheduler decision:")
     print(f"  selected_robot = {result.selected_robot.robot_id}")
     print(f"  score = {result.score:.2f}")
+    print(
+        f"  (travel={breakdown.travel_cost:.2f}, battery_penalty={breakdown.battery_penalty:.2f}, "
+        f"queue_cost={breakdown.queue_cost:.2f}, utilization_cost={breakdown.utilization_cost:.2f}, "
+        f"priority_penalty={breakdown.priority_penalty:.2f})"
+    )
     if result.used_fallback:
         print("  (fallback: no AVAILABLE robot found; assigned from the full candidate pool)")
 

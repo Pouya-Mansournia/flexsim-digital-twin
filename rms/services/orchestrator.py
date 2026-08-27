@@ -17,13 +17,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from rms.domain import Mission, Robot, Task
+from rms.domain import Mission, Robot, Task, Workstation
 from rms.fleet import FleetManager
 from rms.fleet.manager import RobotSource
 from rms.missions import MissionManager
 from rms.scheduler import ResourceScheduler
 from rms.scheduler.resource_scheduler import NoCandidateRobotError
 from rms.tasks import TaskManager
+from rms.workstations import WorkstationManager
+from rms.workstations.manager import WorkstationSource
 
 
 class CommandSender(Protocol):
@@ -69,17 +71,19 @@ class RmsOrchestrator:
 
     def __init__(
         self,
-        adapter: RobotSource | CommandSender,
+        adapter: RobotSource | CommandSender | WorkstationSource,
         fleet: FleetManager | None = None,
+        workstations: WorkstationManager | None = None,
         task_manager: TaskManager | None = None,
         mission_manager: MissionManager | None = None,
         scheduler: ResourceScheduler | None = None,
     ) -> None:
         self.adapter = adapter
         self.fleet = fleet or FleetManager()
+        self.workstations = workstations or WorkstationManager()
         self.task_manager = task_manager or TaskManager()
         self.mission_manager = mission_manager or MissionManager(self.task_manager)
-        self.scheduler = scheduler or ResourceScheduler()
+        self.scheduler = scheduler or ResourceScheduler(workstation_manager=self.workstations)
 
     def sync_fleet(self) -> list[Robot]:
         """Refresh FleetManager from the adapter. Raises
@@ -91,6 +95,18 @@ class RmsOrchestrator:
             return self.fleet.sync_from_source(self.adapter)  # type: ignore[arg-type]
         except Exception as exc:  # adapter-specific errors vary; we wrap them uniformly
             raise IntegrationError(f"could not sync fleet from adapter: {exc}") from exc
+
+    def sync_workstations(self) -> list[Workstation]:
+        """Refresh WorkstationManager from the adapter, feeding the
+        scheduler's `queue_cost` term. Optional: if the adapter doesn't
+        support `get_workstations()` (e.g. a test fake that only does
+        robots), this raises IntegrationError and callers can simply
+        not call it, leaving queue_cost at 0 for unknown destinations.
+        """
+        try:
+            return self.workstations.sync_from_source(self.adapter)  # type: ignore[arg-type]
+        except Exception as exc:  # adapter-specific errors vary; we wrap them uniformly
+            raise IntegrationError(f"could not sync workstations from adapter: {exc}") from exc
 
     def run_mission(
         self,

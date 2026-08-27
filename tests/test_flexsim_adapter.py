@@ -6,7 +6,7 @@ import pytest
 
 from adapters.flexsim import FlexSimAdapter
 from adapters.flexsim.adapter import FlexSimAdapterError
-from rms.domain import RobotStatus
+from rms.domain import RobotStatus, WorkstationStatus
 
 
 def fake_response(payload: dict) -> io.BytesIO:
@@ -49,6 +49,41 @@ def test_get_robots_raises_adapter_error_on_connection_failure():
     with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("refused")):
         with pytest.raises(FlexSimAdapterError):
             adapter.get_robots()
+
+
+def test_get_workstations_maps_queues_when_model_running():
+    adapter = FlexSimAdapter()
+    payload = {
+        "has_data": True,
+        "telemetry": {
+            "model_status": "running",
+            "queues": {"Queue1": 12, "Queue2": 0},
+        },
+    }
+    with patch("urllib.request.urlopen", return_value=fake_response(payload)):
+        workstations = {w.workstation_id: w for w in adapter.get_workstations()}
+
+    assert workstations["Queue1"].queue_length == 12
+    assert workstations["Queue1"].status == WorkstationStatus.READY
+    assert workstations["Queue2"].queue_length == 0
+
+
+def test_get_workstations_marks_offline_when_model_not_running():
+    adapter = FlexSimAdapter()
+    payload = {
+        "has_data": True,
+        "telemetry": {"model_status": "stopped", "queues": {"Queue1": 3}},
+    }
+    with patch("urllib.request.urlopen", return_value=fake_response(payload)):
+        workstations = adapter.get_workstations()
+
+    assert workstations[0].status == WorkstationStatus.OFFLINE
+
+
+def test_get_workstations_returns_empty_list_when_no_telemetry_yet():
+    adapter = FlexSimAdapter()
+    with patch("urllib.request.urlopen", return_value=fake_response({"has_data": False})):
+        assert adapter.get_workstations() == []
 
 
 def test_send_command_returns_command_id():

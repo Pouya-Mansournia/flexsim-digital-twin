@@ -21,10 +21,15 @@ FlexSim -> bridge -> FlexSimAdapter.get_robots() -> FleetManager
 
 Run it yourself with `bridge/` up:
 [`examples/live_flexsim_rms_demo.py`](../examples/live_flexsim_rms_demo.py).
-`traffic/` is still interface only, and the scheduler's `queue_cost`
-and `utilization_cost` terms are placeholders (always 0) until
-`WorkstationManager`/`TrafficManager` data feeds them, which is the
-next step.
+
+`queue_cost` and `utilization_cost` are wired now too:
+`FlexSimAdapter.get_workstations()` maps FlexSim's queues into
+`WorkstationManager`, so `queue_cost` reflects a destination's real
+backlog (0 if the destination isn't a known workstation yet), and the
+scheduler tracks its own per-run assignment counts as `utilization_cost`,
+a simple load-balancing signal between otherwise-equal robots. `traffic/`
+is still interface only; congestion-aware scheduling is the next step
+beyond this.
 
 ## Layout
 
