@@ -117,3 +117,19 @@ def test_sync_workstations_feeds_queue_cost_into_scheduling():
     # scheduler had a workstation_manager wired to it from construction.
     breakdown = orchestrator.scheduler.breakdown(result.selected_robot, result.task)
     assert breakdown.queue_cost == 20.0
+
+
+def test_run_mission_refuses_a_blocked_destination():
+    robots = [Robot(robot_id="AGV1", status=RobotStatus.AVAILABLE)]
+    workstations = [
+        Workstation(workstation_id="Queue1", status=WorkstationStatus.BLOCKED, queue_length=99)
+    ]
+    orchestrator = RmsOrchestrator(FakeAdapter(robots, workstations))
+    orchestrator.sync_fleet()
+    orchestrator.sync_workstations()
+
+    with pytest.raises(IntegrationError, match="Queue1"):
+        orchestrator.run_mission("move_tote", "inbound", "Queue1")
+
+    # No command should have been sent for a mission that never scheduled.
+    assert orchestrator.adapter.sent_commands == []

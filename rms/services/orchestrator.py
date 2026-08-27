@@ -22,7 +22,7 @@ from rms.fleet import FleetManager
 from rms.fleet.manager import RobotSource
 from rms.missions import MissionManager
 from rms.scheduler import ResourceScheduler
-from rms.scheduler.resource_scheduler import NoCandidateRobotError
+from rms.scheduler.resource_scheduler import NoCandidateRobotError, WorkstationUnavailableError
 from rms.tasks import TaskManager
 from rms.workstations import WorkstationManager
 from rms.workstations.manager import WorkstationSource
@@ -132,7 +132,7 @@ class RmsOrchestrator:
         used_fallback = not self.fleet.list_available()
         try:
             chosen = self.scheduler.assign(task, robots)
-        except NoCandidateRobotError as exc:
+        except (NoCandidateRobotError, WorkstationUnavailableError) as exc:
             raise IntegrationError(str(exc)) from exc
         score = self.scheduler.score(chosen, task)
 

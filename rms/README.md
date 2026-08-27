@@ -27,9 +27,17 @@ Run it yourself with `bridge/` up:
 `WorkstationManager`, so `queue_cost` reflects a destination's real
 backlog (0 if the destination isn't a known workstation yet), and the
 scheduler tracks its own per-run assignment counts as `utilization_cost`,
-a simple load-balancing signal between otherwise-equal robots. `traffic/`
-is still interface only; congestion-aware scheduling is the next step
-beyond this.
+a simple load-balancing signal between otherwise-equal robots.
+
+`ResourceScheduler.assign()` also now refuses outright, with
+`WorkstationUnavailableError`, when a task's destination is a known
+workstation that can't accept new work (`BLOCKED`/`FAULT`/`STARVED`/
+`OFFLINE`; an unknown destination stays permissive, same default as
+`queue_cost`). Verified live: stopping FlexSim (`model_status: "stopped"`
+in telemetry) marks its queues `OFFLINE`, and the orchestrator refuses
+to dispatch there instead of sending a robot toward a queue that isn't
+moving. `traffic/` is still interface only; congestion-aware scheduling
+is the next step beyond this.
 
 ## Layout
 

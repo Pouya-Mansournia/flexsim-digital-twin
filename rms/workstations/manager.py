@@ -13,6 +13,10 @@ from typing import Protocol
 
 from rms.domain import Workstation, WorkstationStatus
 
+# Statuses under which a workstation can still take on new work.
+# BLOCKED/FAULT/STARVED/OFFLINE cannot: see WorkstationManager.can_accept.
+ACCEPTING_STATUSES = frozenset({WorkstationStatus.READY, WorkstationStatus.BUSY})
+
 
 class WorkstationSource(Protocol):
     """Anything that can report a list of current Workstation states,
@@ -56,6 +60,22 @@ class WorkstationManager:
         return [
             w for w in self._workstations.values() if w.status == WorkstationStatus.READY
         ]
+
+    def can_accept(self, workstation_id: str) -> bool:
+        """Whether a destination can take on new work right now.
+
+        Returns True for an *unknown* workstation_id (nothing registered
+        under that id yet), matching the Resource Scheduler's existing
+        permissive default for `queue_cost` (0 for an unknown
+        destination): this only blocks a destination we actually have a
+        BLOCKED/FAULT/STARVED/OFFLINE reading for, never one we simply
+        haven't synced yet.
+        """
+        try:
+            workstation = self.get_workstation(workstation_id)
+        except KeyError:
+            return True
+        return workstation.status in ACCEPTING_STATUSES
 
     def update_state(
         self,

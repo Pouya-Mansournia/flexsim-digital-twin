@@ -54,6 +54,14 @@ class NoCandidateRobotError(RuntimeError):
     """Raised when a task has no candidate robots to choose from."""
 
 
+class WorkstationUnavailableError(RuntimeError):
+    """Raised when a task's destination workstation is known and can't
+    accept new work right now (BLOCKED/FAULT/STARVED/OFFLINE). Assigning
+    a robot toward it would just create a robot idling in a queue that
+    isn't moving, so `assign()` refuses instead.
+    """
+
+
 class ResourceScheduler:
     """Chooses the best robot for a task using a weighted score."""
 
@@ -137,7 +145,20 @@ class ResourceScheduler:
         needlessly. Records the pick against `utilization_cost` so a
         robot assigned repeatedly gets progressively deprioritized
         relative to less-used, otherwise-equal robots.
+
+        Raises WorkstationUnavailableError before considering any robot
+        if the task's destination is a known workstation that can't
+        accept new work right now (see WorkstationManager.can_accept);
+        an unknown destination is treated as accepting, same as
+        queue_cost's permissive default for one not yet synced.
         """
+        if self.workstation_manager is not None and not self.workstation_manager.can_accept(task.location):
+            workstation = self.workstation_manager.get_workstation(task.location)
+            raise WorkstationUnavailableError(
+                f"destination '{task.location}' cannot accept new work "
+                f"(status={workstation.status.value})"
+            )
+
         if not candidates:
             raise NoCandidateRobotError(f"no candidate robots for task {task.task_id}")
 

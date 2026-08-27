@@ -2,7 +2,7 @@ import pytest
 
 from rms.domain import Robot, RobotStatus, Task, TaskStatus, Workstation, WorkstationStatus
 from rms.scheduler import ResourceScheduler
-from rms.scheduler.resource_scheduler import NoCandidateRobotError
+from rms.scheduler.resource_scheduler import NoCandidateRobotError, WorkstationUnavailableError
 from rms.workstations import WorkstationManager
 
 
@@ -103,3 +103,32 @@ def test_utilization_cost_penalizes_a_robot_already_assigned_this_run():
     # Equally-positioned, equally-charged robots: the one already
     # assigned once should lose out to the untouched one next time.
     assert first_pick.robot_id != second_pick.robot_id
+
+
+def test_assign_refuses_when_destination_workstation_cannot_accept():
+    workstations = WorkstationManager()
+    workstations.register(
+        Workstation(workstation_id="Workstation-03", status=WorkstationStatus.BLOCKED)
+    )
+    scheduler = ResourceScheduler(workstation_manager=workstations)
+    robot = Robot(robot_id="AMR-1", status=RobotStatus.AVAILABLE)
+
+    with pytest.raises(WorkstationUnavailableError, match="Workstation-03"):
+        scheduler.assign(make_task(), [robot])
+
+
+def test_assign_allows_unknown_destination_and_ready_destination():
+    workstations = WorkstationManager()
+    workstations.register(
+        Workstation(workstation_id="Workstation-03", status=WorkstationStatus.READY)
+    )
+    scheduler = ResourceScheduler(workstation_manager=workstations)
+    robot = Robot(robot_id="AMR-1", status=RobotStatus.AVAILABLE)
+
+    # READY destination: fine.
+    assert scheduler.assign(make_task(), [robot]).robot_id == "AMR-1"
+
+    # Unknown destination (nothing registered): also fine, permissive default.
+    unknown_task = make_task()
+    unknown_task.location = "Workstation-99"
+    assert scheduler.assign(unknown_task, [robot]).robot_id == "AMR-1"

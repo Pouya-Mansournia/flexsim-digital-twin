@@ -364,7 +364,11 @@ The scheduler's `queue_cost` and `utilization_cost` terms are wired in
 too now: `queue_cost` comes from real FlexSim queue backlog via
 `FlexSimAdapter.get_workstations()`, and `utilization_cost` is the
 scheduler's own running per-robot assignment count, for basic load
-balancing between otherwise-equal robots. `rms/traffic` and the rest of
+balancing between otherwise-equal robots. The scheduler also refuses to
+dispatch toward a workstation it knows can't accept work right now
+(blocked, faulted, starved, or offline), verified live by stopping
+FlexSim and watching the orchestrator decline instead of sending a
+robot toward a queue that isn't moving. `rms/traffic` and the rest of
 `adapters/` (`ros2/`, `plc/`, `external/`) are still interfaces only.
 Unit tests (`pytest` from the repository root) need nothing running;
 one integration test additionally exercises the live path and
