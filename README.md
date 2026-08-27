@@ -397,12 +397,17 @@ python examples\live_flexsim_rms_demo.py
 ```
 
 By default that runs one cycle and exits, matching what most people
-want to try first. Pass `--loop` to keep scheduling repeatedly
-(`--interval` sets the seconds between cycles, default 5), the same
-way `bridge\start_rms_loop.bat` does for the dashboard's benefit:
+want to try first, reading FlexSim's own telemetry channel (needs an
+actual FlexSim model running). Pass `--loop` to keep scheduling
+repeatedly (`--interval` sets the seconds between cycles, default 5),
+the same way `bridge\start_rms_loop.bat` does for the dashboard's
+benefit. Pass `--source real` to schedule against the mock fleet's
+telemetry instead, so decisions have something continuously changing
+to react to even without FlexSim running:
 
 ```powershell
 python examples\live_flexsim_rms_demo.py --loop
+python examples\live_flexsim_rms_demo.py --loop --source real
 ```
 
 The scheduler's `queue_cost` and `utilization_cost` terms are wired in

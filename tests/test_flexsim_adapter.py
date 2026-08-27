@@ -93,3 +93,28 @@ def test_send_command_returns_command_id():
         command_id = adapter.send_command("TaskExecuter3", "move_to", {"x": 10, "y": 5})
 
     assert command_id == "cmd-123"
+
+
+def test_rejects_unknown_channel():
+    with pytest.raises(ValueError):
+        FlexSimAdapter(channel="bogus")  # type: ignore[arg-type]
+
+
+def test_real_channel_reads_from_real_state_endpoint():
+    adapter = FlexSimAdapter(channel="real")
+    payload = {
+        "has_data": True,
+        "telemetry": {
+            "status": "running",
+            "queues": {"Queue1": 7},
+            "robots": {"RealRobot1": {"x": 0.0, "y": 0.0, "speed": 0.0, "state": "idle", "battery": 100.0}},
+        },
+    }
+    with patch("urllib.request.urlopen", side_effect=lambda *a, **k: fake_response(payload)) as urlopen:
+        robots = adapter.get_robots()
+        workstations = adapter.get_workstations()
+
+    assert robots[0].robot_id == "RealRobot1"
+    assert workstations[0].status == WorkstationStatus.READY
+    for call in urlopen.call_args_list:
+        assert call.args[0].endswith("/api/v1/real/state")

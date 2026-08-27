@@ -2,9 +2,10 @@
 
 Phase 3 first implementation. The endpoints it sits in front of already
 exist and work today (bridge/app/api/telemetry.py,
-bridge/app/api/commands.py); this adapter just translates between
-bridge/'s wire format and rms/domain's Robot type, and issues commands,
-so the Fleet Manager and Resource Scheduler don't talk HTTP directly.
+bridge/app/api/real_environment.py, bridge/app/api/commands.py); this
+adapter just translates between bridge/'s wire format and rms/domain's
+Robot/Workstation types, and issues commands, so the Fleet Manager and
+Resource Scheduler don't talk HTTP directly.
 
 Uses only the standard library (urllib), matching the rest of rms/: no
 extra dependency beyond pytest is needed to run rms/'s tests, even
@@ -16,11 +17,21 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
-from typing import Any
+from typing import Any, Literal
 
 from rms.domain import Robot, RobotStatus, Workstation, WorkstationStatus
 
 IDLE_STATE_NAMES = {"idle", "available", "waiting"}
+
+# Both channels are served by bridge/ behind the same wire shape
+# (has_data / telemetry.robots / telemetry.queues), just under different
+# path prefixes and with a differently-named status field
+# (model_status vs status). See channel= on __init__.
+_STATE_PATH_BY_CHANNEL = {"flexsim": "/api/v1/state", "real": "/api/v1/real/state"}
+_STATUS_FIELD_BY_CHANNEL = {"flexsim": "model_status", "real": "status"}
+_RUNNING_STATUS_VALUES = {"running"}
+
+Channel = Literal["flexsim", "real"]
 
 
 class FlexSimAdapterError(RuntimeError):
@@ -28,13 +39,31 @@ class FlexSimAdapterError(RuntimeError):
 
 
 class FlexSimAdapter:
-    """Reads FlexSim state from the bridge and forwards RMS commands to
-    it via POST /api/v1/commands.
+    """Reads robot/queue state from the bridge and forwards RMS commands
+    to it via POST /api/v1/commands.
+
+    Reads from FlexSim's own telemetry channel by default (`channel=
+    "flexsim"`, the model itself). Pass `channel="real"` to instead read
+    the real/ROS2-side channel that `bridge/ros2_sim/simulator.py` (or a
+    future real ROS2 node) posts to: useful for exercising the scheduler
+    against continuously-changing telemetry without a real FlexSim model
+    running, since the two channels are otherwise kept deliberately
+    separate for the dashboard's FlexSim-vs-real comparison.
     """
 
-    def __init__(self, bridge_url: str = "http://127.0.0.1:8000", timeout: float = 5.0) -> None:
+    def __init__(
+        self,
+        bridge_url: str = "http://127.0.0.1:8000",
+        timeout: float = 5.0,
+        channel: Channel = "flexsim",
+    ) -> None:
+        if channel not in _STATE_PATH_BY_CHANNEL:
+            raise ValueError(f"unknown channel: {channel!r} (expected 'flexsim' or 'real')")
         self.bridge_url = bridge_url.rstrip("/")
         self.timeout = timeout
+        self.channel = channel
+        self._state_path = _STATE_PATH_BY_CHANNEL[channel]
+        self._status_field = _STATUS_FIELD_BY_CHANNEL[channel]
 
     def _get_json(self, path: str) -> dict[str, Any]:
         url = f"{self.bridge_url}{path}"
@@ -57,11 +86,11 @@ class FlexSimAdapter:
             raise FlexSimAdapterError(f"could not reach bridge at {url}: {exc}") from exc
 
     def get_robots(self) -> list[Robot]:
-        """Fetch GET /api/v1/state and map its robots into rms/domain
-        Robot objects. Returns an empty list if FlexSim hasn't sent
-        telemetry yet (`has_data: false`).
+        """Fetch the configured channel's state and map its robots into
+        rms/domain Robot objects. Returns an empty list if that channel
+        hasn't received telemetry yet (`has_data: false`).
         """
-        state = self._get_json("/api/v1/state")
+        state = self._get_json(self._state_path)
         if not state.get("has_data"):
             return []
 
@@ -84,21 +113,24 @@ class FlexSimAdapter:
         return result
 
     def get_workstations(self) -> list[Workstation]:
-        """Fetch GET /api/v1/state and map FlexSim's queues into
+        """Fetch the configured channel's state and map its queues into
         rms/domain Workstation objects, one per named queue, so the
         Resource Scheduler has real backlog data to feed `queue_cost`.
-        FlexSim has no notion of a "workstation" as such; a queue is
-        the closest analog it reports today. Returns an empty list if
-        no telemetry has arrived yet.
+        Neither FlexSim nor the mock fleet has a notion of a
+        "workstation" as such; a queue is the closest analog either
+        reports today. Returns an empty list if no telemetry has
+        arrived yet.
         """
-        state = self._get_json("/api/v1/state")
+        state = self._get_json(self._state_path)
         if not state.get("has_data"):
             return []
 
         telemetry = state.get("telemetry") or {}
         queues = telemetry.get("queues", {})
-        model_status = str(telemetry.get("model_status", "")).lower()
-        status = WorkstationStatus.READY if model_status == "running" else WorkstationStatus.OFFLINE
+        run_status = str(telemetry.get(self._status_field, "")).lower()
+        status = (
+            WorkstationStatus.READY if run_status in _RUNNING_STATUS_VALUES else WorkstationStatus.OFFLINE
+        )
 
         return [
             Workstation(workstation_id=name, status=status, queue_length=int(count))
@@ -107,7 +139,8 @@ class FlexSimAdapter:
 
     def send_command(self, target: str, command_type: str, parameters: dict[str, Any] | None = None) -> str:
         """POST /api/v1/commands and return the command id for the RMS
-        to track through /api/v1/commands/next and /{id}/ack.
+        to track through /api/v1/commands/next and /{id}/ack. Shared by
+        both channels: the command queue isn't itself channel-specific.
         """
         body = {"target": target, "command": command_type, "parameters": parameters or {}}
         response = self._post_json("/api/v1/commands", body)

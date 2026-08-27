@@ -50,10 +50,10 @@ echo.
 echo [2/3] Starting the mock real-environment fleet (new window: "ROS2 Mock Fleet")...
 start "ROS2 Mock Fleet" cmd /k "cd /d bridge && start_ros2_sim.bat"
 
-echo Waiting for robot telemetry to start flowing...
+echo Waiting for the mock fleet's telemetry to start flowing...
 set /a robot_tries=0
 :wait_for_robots
-powershell -NoProfile -Command "try { $r = Invoke-RestMethod -Uri http://127.0.0.1:8000/api/v1/state -TimeoutSec 2; if ($r.has_data -and $r.telemetry.robots.PSObject.Properties.Count -gt 0) { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>nul
+powershell -NoProfile -Command "try { $r = Invoke-RestMethod -Uri http://127.0.0.1:8000/api/v1/real/state -TimeoutSec 2; if ($r.has_data -and $r.telemetry.robots.PSObject.Properties.Count -gt 0) { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>nul
 if %errorlevel%==0 goto robots_ready
 set /a robot_tries+=1
 if %robot_tries% GEQ 30 (
@@ -73,8 +73,10 @@ echo.
 :start_rms_loop
 echo [3/3] Starting the RMS scheduling loop (new window: "RMS Scheduler")...
 echo It picks and dispatches a robot every 5 seconds, so the dashboard's
-echo "RMS Scheduling Decision" panel keeps updating on its own.
-start "RMS Scheduler" cmd /k "cd /d bridge && start_rms_loop.bat"
+echo "RMS Scheduling Decision" panel keeps updating on its own. Scheduled
+echo against the mock fleet this file just started (--source real), since
+echo there's no guarantee a real FlexSim model is running too.
+start "RMS Scheduler" cmd /k "cd /d bridge && start_rms_loop.bat --source real"
 
 :end
 echo.
