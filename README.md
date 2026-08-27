@@ -18,6 +18,14 @@ sides are compared side by side, so a question like "how many robots
 before this queue backs up?" has a testable answer today, not just a
 theoretical one.
 
+On top of that foundation, an evolving **Robot Management System (RMS)**
+already schedules tasks against real FlexSim robots: it reads live
+fleet and queue state through the bridge, picks the best robot for a
+task with a weighted, tested scoring policy, and dispatches a command
+back through the same API, all visible on the dashboard. See
+[Vision: toward a Robot Management System (RMS)](#vision-toward-a-robot-management-system-rms)
+for what's implemented today versus planned.
+
 ## Quick start (no coding experience needed)
 
 One double-click, or three separate ones if you'd rather start each
@@ -66,12 +74,29 @@ cd flexsim-digital-twin\bridge
 .venv\Scripts\python.exe ros2_sim\simulator.py --robots 2
 ```
 
-Run the test suite:
+Run the bridge's test suite:
 
 ```powershell
 cd flexsim-digital-twin\bridge
 .venv\Scripts\Activate.ps1
 pytest
+```
+
+`rms/` and `adapters/` have their own test suite, dependency-free
+(stdlib only) and run from the repository root instead:
+
+```powershell
+cd flexsim-digital-twin
+pip install pytest
+pytest
+```
+
+With the bridge running, see the RMS scheduler make and dispatch one
+real decision:
+
+```powershell
+cd flexsim-digital-twin
+bridge\.venv\Scripts\python.exe examples\live_flexsim_rms_demo.py
 ```
 
 </details>
