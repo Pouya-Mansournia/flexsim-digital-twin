@@ -11,10 +11,13 @@ real, already-running `bridge/` REST API over the standard library's
 `urllib` (no extra dependency): `get_robots()` reads
 `GET /api/v1/state` and maps it into `rms.domain.Robot` objects,
 `send_command()` posts to `POST /api/v1/commands`. See
-`../tests/test_flexsim_adapter.py`. `ros2/`, `plc/`, and `external/` are
-still interfaces only, and none of this is called from `rms/`'s
-managers yet: they'd need to hold a `FlexSimAdapter` instance and use it
-in place of an in-memory `FleetManager`, which hasn't been done.
+`../tests/test_flexsim_adapter.py`.
+
+It's also wired end to end: `rms/services/orchestrator.py` uses a
+`FlexSimAdapter` to sync `FleetManager`, run the scheduler, and dispatch
+a command, verified live against a running `bridge/` in
+[`../examples/live_flexsim_rms_demo.py`](../examples/live_flexsim_rms_demo.py).
+`ros2/`, `plc/`, and `external/` are still interfaces only.
 
 ## Layout
 

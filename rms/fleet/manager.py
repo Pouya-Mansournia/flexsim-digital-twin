@@ -2,14 +2,25 @@
 
 Phase 3 first implementation: deterministic and dependency-free, so it
 can be exercised by unit tests and by the Resource Scheduler without
-needing a real fleet or ROS 2 connected yet. A later
-`adapters/ros2/`-backed version can replace this without changing the
-interface (see rms/README.md).
+needing a real fleet or ROS 2 connected yet. `sync_from_source` lets it
+be refreshed from any adapter that exposes `get_robots()` (today,
+`adapters/flexsim/`; later, `adapters/ros2/`) without `rms/` importing
+`adapters/` directly, keeping the dependency direction adapters -> rms.
 """
 
 from __future__ import annotations
 
+from typing import Protocol
+
 from rms.domain import Robot, RobotStatus
+
+
+class RobotSource(Protocol):
+    """Anything that can report a list of current Robot states, e.g.
+    `adapters.flexsim.FlexSimAdapter`.
+    """
+
+    def get_robots(self) -> list[Robot]: ...
 
 
 class FleetManager:
@@ -21,6 +32,17 @@ class FleetManager:
     def register(self, robot: Robot) -> None:
         """Add or replace a robot's record."""
         self._robots[robot.robot_id] = robot
+
+    def sync_from_source(self, source: RobotSource) -> list[Robot]:
+        """Refresh fleet state from an adapter's `get_robots()` and
+        return what was synced. Robots no longer reported by the
+        source are left as they were (a stale-but-known robot is more
+        useful than a silently vanished one).
+        """
+        robots = source.get_robots()
+        for robot in robots:
+            self.register(robot)
+        return robots
 
     def get_robot(self, robot_id: str) -> Robot:
         """Look up a robot's current state."""

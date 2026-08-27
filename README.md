@@ -339,17 +339,35 @@ robot.
 
 ### Target repository structure
 
-`rms/` and `adapters/` already exist: module boundaries, domain
-dataclasses, and manager/adapter interfaces matching the architecture
-diagram above. `rms/missions`, `rms/tasks`, `rms/fleet`,
-`rms/workstations`, and `rms/scheduler` have working, unit-tested,
-in-memory implementations (a deterministic nearest-available scheduler,
-run with `pytest` from the repository root). `adapters/flexsim` is also
-implemented and talks to the real `bridge/` API over `urllib`; `rms/traffic`
-and the rest of `adapters/` (`ros2/`, `plc/`, `external/`) are still
-interfaces only, bodies raising `NotImplementedError` until they're
-built out. See [`rms/README.md`](rms/README.md) and
-[`adapters/README.md`](adapters/README.md).
+`rms/` and `adapters/` already exist, and the first vertical slice
+closes end to end against the real `bridge/`:
+
+```text
+FlexSim -> bridge -> FlexSimAdapter.get_robots() -> FleetManager
+    -> MissionManager.create_mission() -> TaskManager
+    -> ResourceScheduler -> selected Robot
+    -> FlexSimAdapter.send_command() -> bridge /api/v1/commands
+```
+
+`rms/missions`, `rms/tasks`, `rms/fleet`, `rms/workstations`,
+`rms/scheduler`, and `rms/services` (the orchestrator tying them
+together) have working, unit-tested implementations; so does
+`adapters/flexsim`, talking to the real bridge over `urllib` (no extra
+dependency). Run it live yourself, with `bridge/` up, via
+[`examples/live_flexsim_rms_demo.py`](examples/live_flexsim_rms_demo.py):
+
+```powershell
+python examples\live_flexsim_rms_demo.py
+```
+
+`rms/traffic` and the rest of `adapters/` (`ros2/`, `plc/`, `external/`)
+are still interfaces only, bodies raising `NotImplementedError` until
+they're built out, and the scheduler's `queue_cost`/`utilization_cost`
+terms stay at 0 until `WorkstationManager`/`TrafficManager` data feeds
+them. Unit tests (`pytest` from the repository root) need nothing
+running; one integration test additionally exercises the live path and
+self-skips if `bridge/` isn't up. See [`rms/README.md`](rms/README.md)
+and [`adapters/README.md`](adapters/README.md).
 
 ```text
 flexsim-digital-twin/
