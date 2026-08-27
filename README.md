@@ -20,21 +20,29 @@ theoretical one.
 
 ## Quick start (no coding experience needed)
 
-Two files, two double-clicks, no commands to type.
+One double-click, or three separate ones if you'd rather start each
+piece on its own.
 
 1. **Install Python** (only once, if you don't already have it):
    [python.org/downloads](https://www.python.org/downloads/), download,
    run the installer, check **"Add python.exe to PATH"**, then Install.
-2. Download or `git clone` this repository, then open the `bridge` folder.
-3. **Double-click `start.bat`.** A black window opens, sets things up the
-   first time (takes about a minute), starts the server, and your
-   browser opens automatically to the live dashboard. Leave that window
-   open; closing it stops the server.
-4. Optional, to see the "real robots" side of the comparison: also
-   **double-click `start_ros2_sim.bat`**. A second window opens showing a
-   simulated robot fleet moving totes, and the dashboard's "Digital Twin
-   Comparison" section comes alive. Use the number box on the dashboard
-   to change how many robots there are and watch the effect right away.
+2. Download or `git clone` this repository.
+3. **Double-click `start_all.bat`** in the repository root. It opens
+   the bridge in its own window (setting things up the first time,
+   about a minute), opens the mock real-environment fleet in a second
+   window, runs one RMS scheduling decision so the dashboard has
+   something to show right away, and opens your browser to the live
+   dashboard automatically. Close the "FlexSim Bridge" or "ROS2 Mock
+   Fleet" windows to stop those pieces.
+
+Prefer to start things one at a time (or only some of them)? Every
+piece `start_all.bat` runs also works completely on its own:
+
+| Double-click | Starts |
+|---|---|
+| `bridge\start.bat` | Just the bridge + dashboard |
+| `bridge\start_ros2_sim.bat` | Just the mock robot fleet (after the bridge is up) |
+| `python examples\live_flexsim_rms_demo.py` | Just one RMS scheduling run (needs a command line) |
 
 That's it. `http://127.0.0.1:8000/dashboard` is now live in your browser.
 To connect the actual FlexSim 2027 model instead of just the mock
@@ -409,19 +417,29 @@ flexsim-digital-twin/
 │
 ├── bridge/                    Python middleware (FastAPI + dashboard)
 │   ├── app/                    Application source
-│   │   ├── api/                  telemetry, real-environment, commands, dashboard
+│   │   ├── api/                  telemetry, real-environment, rms decisions, commands, dashboard
 │   │   ├── models/                Pydantic schemas
 │   │   ├── services/              in-memory state stores
 │   │   └── core/                   config, logging
 │   ├── flexsim/                 FlexSim-side integration docs
 │   │   └── verified_scripts/       tested FlexScript + every gotcha found
 │   ├── ros2_sim/                 mock real-environment robot fleet
-│   ├── tests/                    pytest suite (19 tests)
-│   ├── start.bat                  double-click to set up and run (Windows)
-│   ├── start_ros2_sim.bat          double-click to run the mock fleet
+│   ├── tests/                    pytest suite (25 tests)
+│   ├── start.bat                  double-click to set up and run just the bridge
+│   ├── start_ros2_sim.bat          double-click to run just the mock fleet
 │   ├── run.ps1                     what start.bat calls under the hood
 │   └── README.md                   full bridge documentation
 │
+├── rms/                        Robot Management System core (see its README)
+│   ├── domain/, missions/, tasks/, fleet/, workstations/,
+│   │   scheduler/, traffic/, services/
+│   └── README.md
+├── adapters/                   flexsim/ (implemented), ros2/, plc/, external/ (interfaces)
+├── examples/
+│   └── live_flexsim_rms_demo.py   one live RMS scheduling run against the real bridge
+├── tests/                      rms/ + adapters/ unit tests (pytest from repo root)
+│
+├── start_all.bat               double-click to start the bridge + mock fleet + one RMS run
 ├── assets/                    Images used in this README
 ├── LICENSE
 └── README.md                  you are here
