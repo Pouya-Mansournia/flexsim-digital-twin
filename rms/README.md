@@ -33,16 +33,16 @@ a simple load-balancing signal between otherwise-equal robots.
 `WorkstationUnavailableError`, when a task's destination is a known
 workstation that can't accept new work (`BLOCKED`/`FAULT`/`STARVED`/
 `OFFLINE`; an unknown destination stays permissive, same default as
-`queue_cost`). Verified live: stopping FlexSim (`model_status: "stopped"`
-in telemetry) marks its queues `OFFLINE`, and the orchestrator refuses
-to dispatch there instead of sending a robot toward a queue that isn't
+`queue_cost`). Stopping FlexSim (`model_status: "stopped"` in
+telemetry) marks its queues `OFFLINE`, and the orchestrator refuses to
+dispatch there instead of sending a robot toward a queue that isn't
 moving.
 
 `traffic/` is now implemented too: an in-memory `TrafficManager` for
 zone reservations (`reserve_zone`/`release_zone`, idempotent for the
 holder, refused for anyone else) and a simple congestion estimate that
 rises with contested reservations. It isn't wired into the scheduler
-yet (no zone concept exists on `Task`/`Robot` today) — that's the next
+yet (no zone concept exists on `Task`/`Robot` today), which is the next
 step for `queue_cost`'s sibling, a `zone_cost` term.
 
 Every RMS run also posts its decision to the live dashboard: see

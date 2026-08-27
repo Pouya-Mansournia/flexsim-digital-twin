@@ -4,8 +4,8 @@ ResourceScheduler, against whatever adapter is handed to it.
 
 This is the one place in rms/ that talks to an adapter, and it only
 talks to the adapter through the two Protocols below (`RobotSource`,
-already defined in rms/fleet/manager.py, plus `CommandSender` here) —
-never to `adapters.flexsim` (or `adapters.ros2`, later) by name. That
+already defined in rms/fleet/manager.py, plus `CommandSender` here),
+never `adapters.flexsim` (or `adapters.ros2`, later) by name. That
 keeps the dependency direction adapters -> rms, matching the "Adapters
 protect the core" design principle in the root README: rms/ stays
 usable in a unit test with a fake adapter, and swappable to a real ROS 2

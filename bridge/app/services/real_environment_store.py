@@ -1,7 +1,7 @@
 """Thread-safe in-memory store for the latest real/ROS2-side environment
 snapshot. Mirrors state_store.py but kept as a separate store so the
 FlexSim simulation side and the real-environment side never overwrite
-each other — the dashboard reads both independently to compare them.
+each other; the dashboard reads both independently to compare them.
 """
 
 from __future__ import annotations

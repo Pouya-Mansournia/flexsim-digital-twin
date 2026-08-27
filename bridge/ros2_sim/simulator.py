@@ -1,7 +1,7 @@
 """Mock "real environment" simulator standing in for a real ROS2-driven
 robot fleet, for digital-twin comparison against the FlexSim simulation.
 
-This is NOT ROS2 / NOT Gazebo — no such dependencies are installed
+This is NOT ROS2 / NOT Gazebo: no such dependencies are installed
 (Phase 1 scope). It's a small standalone discrete-time simulation with:
 
 - A configurable number of robots (default 2), each with a realistic
@@ -9,7 +9,7 @@ This is NOT ROS2 / NOT Gazebo — no such dependencies are installed
   decelerates to 0 on arrival) instead of teleporting or jumping speed
   instantly.
 - A steady arrival rate of new totes into Queue1/Queue2, so a backlog can
-  actually form if the fleet can't keep up — the whole point of being
+  actually form if the fleet can't keep up, which is the whole point of being
   able to answer "how many robots do we need so Q1/Q2 don't pile up".
 - A computed `backlog` (Queue1 + Queue2) and trend (growing/shrinking/
   stable) printed each tick and included in the POSTed payload, so you

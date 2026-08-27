@@ -1,4 +1,4 @@
-// Verified working FlexScript — POST telemetry to the bridge.
+// Verified working FlexScript: POST telemetry to the bridge.
 // Run inside FlexSim 2027's Script Console (toolbar button "Script").
 // Confirmed working on 2026-08-25: returned statusCode 200 and the
 // bridge logged "Telemetry received: sim_time=1.00 status=running ...".

@@ -1,8 +1,8 @@
-// Verified working FlexScript — POST real queue content from DG-FT-01.fsm.
+// Verified working FlexScript: POST real queue content from DG-FT-01.fsm.
 // Run inside FlexSim 2027's Script Console.
 // Confirmed working on 2026-08-25: statusCode 200, bridge logged real
 // queue counts, e.g. "queues=4" with actual content() values (0 while
-// model was stopped at time 0 — run the model first to see nonzero counts).
+// model was stopped at time 0; run the model first to see nonzero counts).
 
 Http.Request req;
 req.host = "127.0.0.1";

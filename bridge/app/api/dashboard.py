@@ -4,7 +4,7 @@ the real/ROS2-side environment for digital-twin comparison.
 Self-contained HTML/JS page (no external assets, no build step) that polls
 GET /api/v1/state and GET /api/v1/real/state on an interval and renders
 queue levels, processor state, throughput counters, robots, and a
-side-by-side FlexSim-vs-real comparison — plus a control to change the
+side-by-side FlexSim-vs-real comparison, plus a control to change the
 real-environment robot fleet size live.
 """
 
@@ -492,7 +492,7 @@ function renderProcessors(processors) {
 }
 
 // Simple live bar chart for monotonically-increasing throughput counters
-// (entry/exit points) — no peak-tracking needed since these never drop,
+// (entry/exit points): no peak-tracking needed since these never drop,
 // so watching the bars grow between polls already reads as "dynamic".
 function drawSimpleChart(el, ctxRef, points, color) {
   const rect = el.getBoundingClientRect();
@@ -551,7 +551,7 @@ function drawSimpleChart(el, ctxRef, points, color) {
 
 // Grouped bar chart: for each queue name present in either source, draw
 // a FlexSim bar and a Real/ROS2 bar side by side so the two can be
-// compared directly — the core "digital twin" view.
+// compared directly: the core "digital twin" view.
 function drawComparisonChart(flexQueues, realQueues) {
   lastFlexQueues = flexQueues;
   lastRealQueues = realQueues;
@@ -630,7 +630,7 @@ function sumCounts(points) {
 }
 
 // Display-only relabeling (e.g. "TaskExecuter3" -> "Robot 3"). The
-// underlying telemetry keys are left untouched — this only affects what's
+// underlying telemetry keys are left untouched; this only affects what's
 // shown in the table.
 function robotDisplayName(name) {
   const match = name.match(/^TaskExecuter(\\d+)$/i);
@@ -697,7 +697,7 @@ let prevBacklog = null;
 // Rolling history of backlog readings, used to smooth out the trend
 // indicator. A single-tick comparison is too noisy (random tote arrivals
 // make it flicker between growing/shrinking/stable every second even
-// when the real trend is clearly one direction) — instead we compare the
+// when the real trend is clearly one direction), so instead we compare the
 // average of the first half of the window against the second half.
 const BACKLOG_HISTORY_SIZE = 20; // ~20s at 1 poll/sec
 let backlogHistory = [];
@@ -721,7 +721,7 @@ function updateBacklog(queues) {
   const firstHalfAvg = backlogHistory.slice(0, mid).reduce((a, b) => a + b, 0) / mid;
   const secondHalfAvg = backlogHistory.slice(mid).reduce((a, b) => a + b, 0) / (backlogHistory.length - mid);
   const delta = secondHalfAvg - firstHalfAvg;
-  const NOISE_THRESHOLD = 0.5; // totes — ignore sub-tote drift as "stable"
+  const NOISE_THRESHOLD = 0.5; // totes; ignore sub-tote drift as "stable"
 
   if (Math.abs(delta) < NOISE_THRESHOLD) {
     trendEl.textContent = '— stable';

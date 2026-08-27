@@ -9,7 +9,7 @@ understood to provide HTTP request capability and JSON handling utilities
 in FlexScript; the exact function names are not guaranteed by this
 document and must be confirmed against the official FlexSim 2027
 reference manual. Where exact syntax cannot be guaranteed, examples are
-clearly labeled as pseudo-code — see `flexsim_http_examples.txt` in this
+clearly labeled as pseudo-code: see `flexsim_http_examples.txt` in this
 folder.
 
 ## Integration workflow
@@ -22,7 +22,7 @@ triggers (e.g. a Timer object or a periodic Event/Listener) in the model:
    want to expose: queues (by content/count), processors (state and
    utilization), conveyors, sources, sinks, and AGVs/mobile robots
    (position, speed, state, battery). Object names are used as dictionary
-   keys — the bridge does not require or assume any specific FlexSim
+   keys; the bridge does not require or assume any specific FlexSim
    object naming scheme.
 
 2. **POST telemetry to the bridge.**
@@ -88,13 +88,13 @@ triggers (e.g. a Timer object or a periodic Event/Listener) in the model:
   or on a fixed wall-clock/sim-time interval (e.g. every 0.5–1 simulated
   seconds) to avoid flooding the bridge.
 - Commands: poll `/api/v1/commands/next` on a similar periodic interval.
-  There is currently no push mechanism (e.g. WebSockets) — polling is the
+  There is currently no push mechanism (e.g. WebSockets), so polling is the
   Phase 1 design choice for simplicity and debuggability.
 
 ## See also
 
-- `flexsim_http_examples.txt` — pseudo-FlexScript examples for the steps
+- `flexsim_http_examples.txt`: pseudo-FlexScript examples for the steps
   above, clearly labeled as pseudo-code.
-- Main project `README.md` — full API reference, curl/PowerShell examples,
+- Main project `README.md`: full API reference, curl/PowerShell examples,
   and Swagger UI instructions (`http://127.0.0.1:8000/docs`) for testing
   the bridge independently of FlexSim.

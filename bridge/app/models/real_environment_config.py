@@ -1,6 +1,6 @@
-"""Config the dashboard can push to the running ros2_sim simulator — right
-now just the desired fleet size, polled by the simulator each tick so the
-robot count can change live without restarting it.
+"""Config the dashboard can push to the running ros2_sim simulator.
+Right now that's just the desired fleet size, polled by the simulator
+each tick so the robot count can change live without restarting it.
 """
 
 from __future__ import annotations

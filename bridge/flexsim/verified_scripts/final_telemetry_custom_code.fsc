@@ -5,19 +5,19 @@
 //
 // Requires these Model Parameters (Model Parameter Tables > Parameters)
 // to already exist, type Continuous, Lower Bound a large negative number,
-// Upper Bound a large positive number, Value starting at 0 — Integer type
+// Upper Bound a large positive number, Value starting at 0. Integer type
 // with default bounds silently rounds/clamps and breaks this:
 //   Proc1Busy .. Proc7Busy, LastSampleTime
 //   TE3PrevX, TE3PrevY, TE3PrevSampleTime
 //   TE4PrevX, TE4PrevY, TE4PrevSampleTime
 //   RampEast, RampWest, Merger, PreSort1..PreSort6, Oddevenmerger, Odd,
-//   Even, Out1, Out2, Out3  (Integer is fine for these — they're plain
+//   Even, Out1, Out2, Out3  (Integer is fine for these; they're plain
 //   incrementing counts, driven by Photo Eye "On Cover" triggers, see
 //   README.md in this folder)
 //
 // Key gotcha this file encodes: Queue1-Queue4 (and TaskExecuter3/4) live
 // nested under a "Plane1" group in the model tree, NOT at the model root.
-// Model.find("Queue1") silently finds a different, empty node — it does
+// Model.find("Queue1") silently finds a different, empty node. It does
 // NOT error, so this is easy to miss. The fix is Model.find("Plane1/Queue1").
 // Find any object's real path by clicking it once and reading the bottom
 // status bar: "Object: /Plane1/Queue1 Position [...]".
@@ -47,7 +47,7 @@ json = json + "\"Queue15\": " + content(Model.find("Queue15"));
 json = json + "},";
 
 // Processor state/utilization: utilization is computed ourselves by
-// accumulating busy-time each cycle and dividing by elapsed model time —
+// accumulating busy-time each cycle and dividing by elapsed model time.
 // FlexSim's built-in stats API (stats.state(), getstatetableutilization())
 // exists but wasn't verified against this model, so this simpler,
 // self-contained approach was used instead.
@@ -84,7 +84,7 @@ double util7 = 0.0; if (Model.time > 0) { util7 = Model.parameters.Proc7Busy / M
 // util should never exceed 1.0 by construction. If it does, this loop
 // is very likely running on more than one Process Flow token at once
 // (a stale token from before a Reset, still sitting in the Delay,
-// alongside the new one from Run) — see the "Duplicate Process Flow
+// alongside the new one from Run); see the "Duplicate Process Flow
 // token after Reset" gotcha in README.md for how to check and fix
 // that in the model. Clamping here is a safety net, not the real fix.
 if (util1 > 1.0) { util1 = 1.0; }
@@ -146,7 +146,7 @@ json = json + "},";
 // Throughput counters: incremented independently by each Photo Eye's
 // "On Cover" trigger (Model.parameters.<Name> = Model.parameters.<Name> + 1),
 // read here and sent through. sources = entry/sorting points, sinks =
-// final exit lanes — grouping is arbitrary and just mirrors the
+// final exit lanes; grouping is arbitrary and just mirrors the
 // telemetry schema's existing free-form sources/sinks fields.
 json = json + "\"sources\": {";
 json = json + "\"RampEast\": {\"count\": " + Model.parameters.RampEast + "},";

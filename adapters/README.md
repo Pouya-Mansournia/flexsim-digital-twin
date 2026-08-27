@@ -15,7 +15,7 @@ real, already-running `bridge/` REST API over the standard library's
 
 It's also wired end to end: `rms/services/orchestrator.py` uses a
 `FlexSimAdapter` to sync `FleetManager`, run the scheduler, and dispatch
-a command, verified live against a running `bridge/` in
+a command against a running `bridge/`, demonstrated in
 [`../examples/live_flexsim_rms_demo.py`](../examples/live_flexsim_rms_demo.py).
 `ros2/`, `plc/`, and `external/` are still interfaces only.
 

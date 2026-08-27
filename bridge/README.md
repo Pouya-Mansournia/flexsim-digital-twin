@@ -189,7 +189,7 @@ quirks, Photo Eye trigger throughput counting).
 
 ## The real/ROS2-side environment
 
-See [`../ros2_sim/README.md`](../ros2_sim/README.md). Short version: it's
+See [`ros2_sim/README.md`](ros2_sim/README.md). Short version: it's
 not real ROS2 (no ROS2 dependencies installed, that's Phase 2). It's a
 small physics-based mock robot fleet with realistic speed ramping and a
 steady tote arrival rate, so the "how many robots before backlog stops
@@ -217,7 +217,8 @@ would take over from `ros2_sim/simulator.py` as the source of
 ## Assumptions
 
 - FlexSim 2027 provides HTTP request capability via the `Http.Request`/
-  `Http.Response` FlexScript classes (confirmed live, not guessed).
+  `Http.Response` FlexScript classes (confirmed against a running model,
+  not assumed from documentation).
 - Single FlexSim model instance, single bridge instance: no
   multi-tenant routing.
 - Localhost-only; no authentication/TLS.

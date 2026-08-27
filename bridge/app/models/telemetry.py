@@ -27,7 +27,7 @@ class ProcessorState(BaseModel):
         transient double-count there (e.g. a leftover Process Flow
         token surviving a Reset) can briefly push it above 1.0. Erroring
         on that used to reject the *entire* telemetry payload for that
-        tick — queues and robots included, not just the one processor —
+        tick, queues and robots included and not just the one processor,
         which is a worse failure mode than a clamped number. The
         FlexScript should still fix its own computation; see the
         gotcha in verified_scripts/README.md.

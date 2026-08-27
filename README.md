@@ -374,8 +374,8 @@ too now: `queue_cost` comes from real FlexSim queue backlog via
 scheduler's own running per-robot assignment count, for basic load
 balancing between otherwise-equal robots. The scheduler also refuses to
 dispatch toward a workstation it knows can't accept work right now
-(blocked, faulted, starved, or offline), verified live by stopping
-FlexSim and watching the orchestrator decline instead of sending a
+(blocked, faulted, starved, or offline): stopping FlexSim marks its
+queues offline, and the orchestrator declines instead of sending a
 robot toward a queue that isn't moving. `rms/traffic` now has a real
 in-memory zone-reservation implementation too, though it isn't wired
 into the scheduler yet. `adapters/` (`ros2/`, `plc/`, `external/`) is
