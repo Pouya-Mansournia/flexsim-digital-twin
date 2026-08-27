@@ -368,8 +368,17 @@ balancing between otherwise-equal robots. The scheduler also refuses to
 dispatch toward a workstation it knows can't accept work right now
 (blocked, faulted, starved, or offline), verified live by stopping
 FlexSim and watching the orchestrator decline instead of sending a
-robot toward a queue that isn't moving. `rms/traffic` and the rest of
-`adapters/` (`ros2/`, `plc/`, `external/`) are still interfaces only.
+robot toward a queue that isn't moving. `rms/traffic` now has a real
+in-memory zone-reservation implementation too, though it isn't wired
+into the scheduler yet. `adapters/` (`ros2/`, `plc/`, `external/`) is
+still interfaces only.
+
+Every live run also shows up on the dashboard: `bridge/` has a new
+`POST`/`GET /api/v1/rms/decision` endpoint (read-only observability, the
+bridge never acts on it), and the dashboard's "RMS Scheduling Decision"
+panel polls it live, showing the selected robot, score, and full cost
+breakdown from the run you triggered with
+`python examples\live_flexsim_rms_demo.py`.
 Unit tests (`pytest` from the repository root) need nothing running;
 one integration test additionally exercises the live path and
 self-skips if `bridge/` isn't up. See [`rms/README.md`](rms/README.md)

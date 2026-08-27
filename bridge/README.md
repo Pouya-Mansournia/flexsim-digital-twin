@@ -95,9 +95,9 @@ installs/updates dependencies, and starts the server on
 pytest
 ```
 
-19 tests covering health, telemetry validation, state retrieval/reset,
-commands (create/poll/ack/empty-queue), and the real-environment +
-fleet-config endpoints.
+24 tests covering health, telemetry validation, state retrieval/reset,
+commands (create/poll/ack/empty-queue), the real-environment +
+fleet-config endpoints, and the RMS decision endpoint.
 
 ## Swagger
 
@@ -123,6 +123,10 @@ http://127.0.0.1:8000/dashboard
   restart needed), a **backlog** metric (`Queue1 + Queue2` on the real
   side) with a smoothed growing/shrinking/stable trend indicator, and a
   table of the real-side robots.
+- **RMS Scheduling Decision**: the selected robot, score, and full cost
+  breakdown (travel/battery/queue/utilization/priority) from the latest
+  `rms/` orchestration run, read-only (the bridge stores it but never
+  acts on it). See `../rms/README.md`.
 - Light/dark theme toggle (persisted in the browser).
 - **Reset** clears both FlexSim's and the real environment's stored
   telemetry. Useful before a fresh run, though independent processes
@@ -144,6 +148,9 @@ http://127.0.0.1:8000/dashboard
 | POST   | `/api/v1/real/state/reset`     | Clear stored real-side telemetry                 |
 | GET    | `/api/v1/real/config`          | Read desired real-environment fleet size         |
 | POST   | `/api/v1/real/config`          | Set desired real-environment fleet size          |
+| POST   | `/api/v1/rms/decision`         | Post an RMS scheduling decision (read-only display)|
+| GET    | `/api/v1/rms/decision`         | Read the latest RMS scheduling decision          |
+| POST   | `/api/v1/rms/decision/reset`   | Clear the stored RMS decision                    |
 | POST   | `/api/v1/commands`              | Queue a command for FlexSim                      |
 | GET    | `/api/v1/commands/next`         | Poll the oldest pending command                  |
 | POST   | `/api/v1/commands/{id}/ack`     | Report command execution result                  |

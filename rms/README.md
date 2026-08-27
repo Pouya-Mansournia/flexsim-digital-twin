@@ -36,8 +36,29 @@ workstation that can't accept new work (`BLOCKED`/`FAULT`/`STARVED`/
 `queue_cost`). Verified live: stopping FlexSim (`model_status: "stopped"`
 in telemetry) marks its queues `OFFLINE`, and the orchestrator refuses
 to dispatch there instead of sending a robot toward a queue that isn't
-moving. `traffic/` is still interface only; congestion-aware scheduling
-is the next step beyond this.
+moving.
+
+`traffic/` is now implemented too: an in-memory `TrafficManager` for
+zone reservations (`reserve_zone`/`release_zone`, idempotent for the
+holder, refused for anyone else) and a simple congestion estimate that
+rises with contested reservations. It isn't wired into the scheduler
+yet (no zone concept exists on `Task`/`Robot` today) — that's the next
+step for `queue_cost`'s sibling, a `zone_cost` term.
+
+Every RMS run also posts its decision to the live dashboard: see
+[Dashboard integration](#dashboard-integration) below.
+
+### Dashboard integration
+
+`examples/live_flexsim_rms_demo.py` posts each decision (best-effort) to
+`bridge/`'s new `POST /api/v1/rms/decision` endpoint after dispatching
+it, and `bridge/`'s dashboard (`http://127.0.0.1:8000/dashboard`) has an
+"RMS Scheduling Decision" panel that polls
+`GET /api/v1/rms/decision` every second and renders the selected robot,
+score, and full cost breakdown. This is a read-only observability
+channel: the bridge stores the latest decision but never acts on it.
+See `bridge/app/models/rms_decision.py`, `bridge/app/api/rms_decision.py`,
+and `bridge/tests/test_rms_decision.py`.
 
 ## Layout
 

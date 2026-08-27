@@ -310,6 +310,48 @@ _DASHBOARD_HTML = """<!doctype html>
     <div id="realRobotEmpty" class="empty" style="display:none;">No real-robot data yet.</div>
   </div>
 
+  <div class="section-title">RMS Scheduling Decision<div class="line"></div></div>
+
+  <div class="panel">
+    <div class="sub" style="margin-bottom:14px;">
+      <span id="rmsStatusDot" class="status-dot"></span><span id="rmsStatusText">rms: no decision yet</span>
+    </div>
+    <div id="rmsDecisionBody" style="display:none;">
+      <div class="stat-row" style="margin-bottom:14px;">
+        <div class="stat">
+          <div class="label">Mission</div>
+          <div class="value" id="rmsMission" style="font-size:15px;">—</div>
+        </div>
+        <div class="stat">
+          <div class="label">Selected Robot</div>
+          <div class="value" id="rmsRobot" style="color: var(--accent);">—</div>
+        </div>
+        <div class="stat">
+          <div class="label">Score</div>
+          <div class="value" id="rmsScore">—</div>
+        </div>
+        <div class="stat">
+          <div class="label">Command ID</div>
+          <div class="value" id="rmsCommandId" style="font-size:12px;">—</div>
+        </div>
+      </div>
+      <table id="rmsBreakdownTable">
+        <thead><tr><th>travel_cost</th><th>battery_penalty</th><th>queue_cost</th><th>utilization_cost</th><th>priority_penalty</th></tr></thead>
+        <tbody><tr>
+          <td id="rmsTravel">—</td><td id="rmsBattery">—</td><td id="rmsQueue">—</td>
+          <td id="rmsUtilization">—</td><td id="rmsPriority">—</td>
+        </tr></tbody>
+      </table>
+      <div id="rmsFallbackNote" class="hint" style="display:none; margin-top:8px;">
+        Fallback: no AVAILABLE robot found; assigned from the full candidate pool.
+      </div>
+    </div>
+    <div id="rmsEmpty" class="empty">
+      No decision posted yet. Run <code>examples/live_flexsim_rms_demo.py</code>
+      (or anything posting to POST /api/v1/rms/decision) to see one here.
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -723,6 +765,45 @@ async function pollReal() {
   }
 }
 
+async function pollRms() {
+  const dot = document.getElementById('rmsStatusDot');
+  const text = document.getElementById('rmsStatusText');
+  const body = document.getElementById('rmsDecisionBody');
+  const empty = document.getElementById('rmsEmpty');
+  try {
+    const res = await fetch('/api/v1/rms/decision', { cache: 'no-store' });
+    const data = await res.json();
+
+    if (!data.has_data) {
+      dot.className = 'status-dot stale';
+      text.textContent = 'rms: no decision yet';
+      body.style.display = 'none';
+      empty.style.display = '';
+      return;
+    }
+
+    const d = data.decision;
+    dot.className = 'status-dot live';
+    text.textContent = `rms: last decision at ${new Date(d.received_at).toLocaleTimeString()}`;
+    body.style.display = '';
+    empty.style.display = 'none';
+
+    document.getElementById('rmsMission').textContent = `${d.mission_type} ${d.source} -> ${d.destination}`;
+    document.getElementById('rmsRobot').textContent = d.selected_robot;
+    document.getElementById('rmsScore').textContent = d.score.toFixed(2);
+    document.getElementById('rmsCommandId').textContent = d.command_id;
+    document.getElementById('rmsTravel').textContent = d.travel_cost.toFixed(2);
+    document.getElementById('rmsBattery').textContent = d.battery_penalty.toFixed(2);
+    document.getElementById('rmsQueue').textContent = d.queue_cost.toFixed(2);
+    document.getElementById('rmsUtilization').textContent = d.utilization_cost.toFixed(2);
+    document.getElementById('rmsPriority').textContent = d.priority_penalty.toFixed(2);
+    document.getElementById('rmsFallbackNote').style.display = d.used_fallback ? '' : 'none';
+  } catch (err) {
+    dot.className = 'status-dot stale';
+    text.textContent = 'rms: bridge unreachable';
+  }
+}
+
 async function pollFleetConfig() {
   try {
     const res = await fetch('/api/v1/real/config', { cache: 'no-store' });
@@ -755,6 +836,7 @@ document.getElementById('resetBtn').addEventListener('click', async () => {
   try {
     await fetch('/api/v1/state/reset', { method: 'POST' });
     await fetch('/api/v1/real/state/reset', { method: 'POST' });
+    await fetch('/api/v1/rms/decision/reset', { method: 'POST' });
     peakQueues = {};
     document.getElementById('simTime').textContent = '—';
     document.getElementById('modelStatus').textContent = '—';
@@ -777,6 +859,7 @@ document.getElementById('resetBtn').addEventListener('click', async () => {
     drawComparisonChart({}, {});
     poll();
     pollReal();
+    pollRms();
   } catch (err) {
     // best-effort; next poll() will surface "Bridge unreachable" if it's down
   }
@@ -784,9 +867,11 @@ document.getElementById('resetBtn').addEventListener('click', async () => {
 
 poll();
 pollReal();
+pollRms();
 pollFleetConfig();
 setInterval(poll, POLL_MS);
 setInterval(pollReal, POLL_MS);
+setInterval(pollRms, POLL_MS);
 setInterval(pollFleetConfig, POLL_MS);
 </script>
 </body>

@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.api import commands, dashboard, health, real_environment, telemetry
+from app.api import commands, dashboard, health, real_environment, rms_decision, telemetry
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 
@@ -26,6 +26,7 @@ app.include_router(health.router)
 app.include_router(telemetry.router)
 app.include_router(commands.router)
 app.include_router(real_environment.router)
+app.include_router(rms_decision.router)
 app.include_router(dashboard.router)
 
 

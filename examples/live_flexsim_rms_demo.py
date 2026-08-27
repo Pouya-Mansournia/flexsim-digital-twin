@@ -17,15 +17,20 @@ Run from the repository root:
     python examples/live_flexsim_rms_demo.py
 
 This is a demonstration, not a service: it runs one scheduling cycle,
-prints its result, and exits. It shows the current wiring, not a claim
-that the RMS is deployable: rms/traffic and most of adapters/ are still
-interface-only (see rms/README.md), and queue_cost/utilization_cost in
-the scheduler's score are still placeholders.
+prints its result, and exits. It also posts the decision to
+POST /api/v1/rms/decision (best-effort) so it shows up on the live
+dashboard's "RMS Scheduling Decision" panel at
+http://127.0.0.1:8000/dashboard. It shows the current wiring, not a
+claim that the RMS is deployable: most of adapters/ (ros2/, plc/,
+external/) is still interface-only (see rms/README.md).
 """
 
 from __future__ import annotations
 
+import json
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 # Run directly (not via pytest, which has conftest.py for this): put the
@@ -33,7 +38,42 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from adapters.flexsim import FlexSimAdapter  # noqa: E402
-from rms.services import IntegrationError, RmsOrchestrator  # noqa: E402
+from rms.scheduler.resource_scheduler import ScoreBreakdown  # noqa: E402
+from rms.services import IntegrationError, OrchestrationResult, RmsOrchestrator  # noqa: E402
+
+
+def post_decision_to_dashboard(
+    bridge_url: str, mission_type: str, source: str, result: OrchestrationResult, breakdown: ScoreBreakdown
+) -> None:
+    """Best-effort: the demo's own console output already told the
+    story, so a bridge that's unreachable or running an older version
+    without this endpoint shouldn't fail the whole run.
+    """
+    body = {
+        "mission_type": mission_type,
+        "source": source,
+        "destination": result.task.location,
+        "priority": result.task.priority,
+        "selected_robot": result.selected_robot.robot_id,
+        "score": result.score,
+        "travel_cost": breakdown.travel_cost,
+        "battery_penalty": breakdown.battery_penalty,
+        "queue_cost": breakdown.queue_cost,
+        "utilization_cost": breakdown.utilization_cost,
+        "priority_penalty": breakdown.priority_penalty,
+        "used_fallback": result.used_fallback,
+        "command_id": result.command_id,
+    }
+    request = urllib.request.Request(
+        f"{bridge_url}/api/v1/rms/decision",
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        urllib.request.urlopen(request, timeout=3.0)
+    except (urllib.error.URLError, TimeoutError):
+        pass
 
 
 def main() -> int:
@@ -94,6 +134,9 @@ def main() -> int:
 
     print("\nCommand sent:")
     print(f"  command_id = {result.command_id}")
+
+    post_decision_to_dashboard(adapter.bridge_url, mission_type, source, result, breakdown)
+    print(f"\nPosted decision to {adapter.bridge_url}/dashboard")
 
     print("\nRMS live integration: PASS")
     return 0
