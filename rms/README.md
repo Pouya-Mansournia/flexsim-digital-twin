@@ -5,10 +5,14 @@ root README's
 ["Vision: toward a Robot Management System (RMS)"](../README.md#vision-toward-a-robot-management-system-rms)
 section.
 
-**Status: Phase 3 scaffolding.** Nothing here is wired into the running
-`bridge/` service yet, and none of it is exercised by tests. It exists
-so the target domain model and module boundaries are visible in code,
-not just in a diagram, before the actual scheduling logic is built.
+**Status: Phase 3, in progress.** `domain/`, `fleet/`, `workstations/`,
+`tasks/`, `missions/`, and `scheduler/` have real, unit-tested
+implementations now (see `../tests/`): an in-memory Mission -> Task ->
+robot-assignment flow with a deterministic nearest-available scheduler.
+`traffic/` is still interface only, and the scheduler's `queue_cost`
+and `utilization_cost` terms are placeholders (always 0) until it's
+wired in. None of this is connected to the running `bridge/` service
+yet.
 
 ## Layout
 
@@ -29,10 +33,11 @@ rms/
                        readiness.
 ```
 
-Every manager module currently exposes only its intended interface
-(method signatures with docstrings, dataclasses for its inputs/outputs).
-Method bodies raise `NotImplementedError` on purpose: this is a shape to
-build against, not a working scheduler.
+`missions/`, `tasks/`, `fleet/`, `workstations/`, and `scheduler/` have
+working, in-memory, unit-tested implementations. `traffic/` still only
+exposes its intended interface (method signatures with docstrings);
+method bodies there raise `NotImplementedError` on purpose, as a shape
+to build against.
 
 ## Why this exists before the logic does
 

@@ -7,6 +7,11 @@ desktop.ini
 .vscode/
 .idea/
 
+# Python (root-level: rms/, adapters/, tests/)
+__pycache__/
+*.pyc
+.pytest_cache/
+
 # FlexSim autosave/backup noise
 *.fsm.lck
 *~

@@ -69,8 +69,10 @@ class Task:
     mission_id: str
     action: str
     location: str
+    priority: int = 0
     status: TaskStatus = TaskStatus.PENDING
     assigned_robot_id: str | None = None
+    failure_reason: str | None = None
 
 
 @dataclass
@@ -93,4 +95,6 @@ class Workstation:
     workstation_id: str
     status: WorkstationStatus = WorkstationStatus.OFFLINE
     queue_length: int = 0
+    x: float = 0.0
+    y: float = 0.0
     capabilities: tuple[str, ...] = ()

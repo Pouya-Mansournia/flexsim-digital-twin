@@ -339,11 +339,15 @@ robot.
 
 ### Target repository structure
 
-`rms/` and `adapters/` already exist as scaffolding: module boundaries,
-domain dataclasses, and manager/adapter interfaces matching the
-architecture diagram above, with method bodies raising
-`NotImplementedError` until the actual logic (Phase 3 onward) is built.
-See [`rms/README.md`](rms/README.md) and
+`rms/` and `adapters/` already exist: module boundaries, domain
+dataclasses, and manager/adapter interfaces matching the architecture
+diagram above. `rms/missions`, `rms/tasks`, `rms/fleet`,
+`rms/workstations`, and `rms/scheduler` have working, unit-tested,
+in-memory implementations (a deterministic nearest-available scheduler,
+run with `pytest` from the repository root); `rms/traffic` and all of
+`adapters/` are still interfaces only, bodies raising
+`NotImplementedError` until they're built out. See
+[`rms/README.md`](rms/README.md) and
 [`adapters/README.md`](adapters/README.md).
 
 ```text

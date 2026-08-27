@@ -25,6 +25,14 @@ pytest
 All tests must pass before a pull request is merged. Add tests for new
 API endpoints or service logic.
 
+`rms/`'s tests are separate, since `rms/` has no dependency on
+`bridge/`'s virtual environment:
+
+```powershell
+pip install pytest
+pytest    # from the repository root
+```
+
 ## Project structure
 
 - `bridge/app/` — FastAPI service (routes, Pydantic models, in-memory
